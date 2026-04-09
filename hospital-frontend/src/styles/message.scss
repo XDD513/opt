@@ -1,0 +1,183 @@
+.el-message {
+  min-width: 320px;
+  max-width: 420px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 20px 45px rgba(15, 23, 42, 0.15);
+  background: #ffffff;
+  position: fixed !important;
+  left: auto !important;
+  right: 32px !important;
+  /* top 值由 JavaScript 动态设置 */
+  transform: translateX(0) !important;
+  pointer-events: none;
+  z-index: 9999;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  overflow: hidden;
+  /* 进入动画：从右侧滑入（类似 initial: { x: 30 }） */
+  animation:
+    message-slide-in 0.25s ease forwards,
+    message-lifetime var(--message-progress-duration) linear forwards;
+  --message-accent: #2563eb;
+  --message-progress-duration: 3s;
+  /* 布局过渡：位置变化时的平滑动画（类似 Framer Motion 的 layout transition） */
+  transition: top 0.4s cubic-bezier(0.4, 0, 0.2, 1), 
+              transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+              opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.el-message__content {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+.el-message__icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--message-accent);
+}
+
+.el-message__closeBtn {
+  display: none;
+}
+
+.el-message--success {
+  background: linear-gradient(135deg, #f0fff4, #ecfdf5);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  --message-accent: #16a34a;
+
+  .el-message__icon {
+    background: #dcfce7;
+    color: #059669;
+  }
+}
+
+.el-message--warning {
+  background: linear-gradient(135deg, #fffaf0, #fffbeb);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  --message-accent: #d97706;
+
+  .el-message__icon {
+    background: #fef3c7;
+    color: #d97706;
+  }
+}
+
+.el-message--error {
+  background: linear-gradient(135deg, #fff1f2, #fef2f2);
+  border: 1px solid rgba(248, 113, 113, 0.2);
+  --message-accent: #dc2626;
+
+  .el-message__icon {
+    background: #fee2e2;
+    color: #dc2626;
+  }
+}
+
+.el-message--info {
+  background: linear-gradient(135deg, #eff6ff, #f5f3ff);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+  --message-accent: #2563eb;
+
+  .el-message__icon {
+    background: #dbeafe;
+    color: #2563eb;
+  }
+}
+
+.el-message::before,
+.el-message::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.el-message::before {
+  width: 48px;
+  height: 48px;
+  border-radius: 20px;
+  top: -20px;
+  left: -20px;
+  border: 3px solid var(--message-accent);
+  opacity: 0.25;
+}
+
+.el-message::after {
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  width: 130%;
+  background: var(--message-accent);
+  animation: message-progress var(--message-progress-duration) linear forwards;
+  transform-origin: right center;
+}
+
+@keyframes message-slide-in {
+  0% {
+    opacity: 0;
+    transform: translateX(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes message-lifetime {
+  0% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  90% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-10px);
+  }
+}
+
+// 向上滑出动画
+@keyframes message-slide-up-out {
+  0% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100%);
+  }
+}
+
+// 消息向上移动动画
+.el-message-move-up {
+  transition: top 0.3s ease-out !important;
+}
+
+@keyframes message-progress {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  90% {
+    transform: translateX(-100%);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-110%);
+    opacity: 0;
+  }
+}
+

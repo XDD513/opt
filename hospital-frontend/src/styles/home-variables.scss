@@ -1,0 +1,51 @@
+// 首页样式变量
+// 统一管理颜色、间距、动画等
+
+// ==================== 颜色变量 ====================
+$primary-color: #52c41a;
+$primary-hover: #73d13d;
+$primary-light: #f6ffed;
+$primary-border: #b7eb8f;
+
+$text-primary: #333;
+$text-secondary: #666;
+$text-tertiary: #999;
+
+$bg-primary: #fff;
+$bg-secondary: #f5f5f5;
+$bg-light: #fafafa;
+
+// 统计卡片颜色
+$stat-green: #52c41a;
+$stat-orange: #fa8c16;
+$stat-blue: #1890ff;
+$stat-red: #f5222d;
+
+// ==================== 间距变量 ====================
+$spacing-xs: 8px;
+$spacing-sm: 12px;
+$spacing-md: 16px;
+$spacing-lg: 20px;
+$spacing-xl: 24px;
+$spacing-xxl: 32px;
+
+// ==================== 阴影变量 ====================
+$elevation-1: 0 2px 8px rgba(0, 0, 0, 0.08);
+$elevation-2: 0 4px 12px rgba(0, 0, 0, 0.12);
+$elevation-3: 0 8px 24px rgba(0, 0, 0, 0.16);
+
+// ==================== 动画变量 ====================
+$transition-fast: 0.2s;
+$transition-normal: 0.3s;
+$transition-slow: 0.5s;
+
+$ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+$ease-out: cubic-bezier(0, 0, 0.2, 1);
+
+// ==================== 断点变量 ====================
+$breakpoint-xs: 576px;
+$breakpoint-sm: 768px;
+$breakpoint-md: 992px;
+$breakpoint-lg: 1200px;
+$breakpoint-xl: 1400px;
+

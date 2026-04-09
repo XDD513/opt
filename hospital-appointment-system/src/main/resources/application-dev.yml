@@ -1,0 +1,13 @@
+logging:
+  level:
+    com.hospital: info
+    com.hospital.mapper: info
+    org.mybatis: warn
+    org.mybatis.spring: warn
+  pattern:
+    console: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{50} - %msg%n'
+
+spring:
+  devtools:
+    restart:
+      enabled: false

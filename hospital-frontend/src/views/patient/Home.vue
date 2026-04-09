@@ -1,0 +1,200 @@
+<template>
+  <div class="home-container">
+    <!-- 新用户提醒 -->
+    <el-alert
+      v-if="isNewUser && !newUserAlertDismissed"
+      title="欢迎新用户"
+      type="info"
+      :closable="true"
+      @close="newUserAlertDismissed = true"
+      style="margin-bottom: 20px;"
+    >
+      <template #default>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <span>请进行体质测试。</span>
+          <el-button type="primary" size="small" @click="goToSmartTest" style="margin-left: 16px;">
+            立即测试
+          </el-button>
+        </div>
+      </template>
+    </el-alert>
+
+    <!-- 欢迎横幅 -->
+    <HspHeroBanner 
+      :system-name="systemName" 
+      :user-name="userStore.userInfo.realName || userStore.userInfo.username"
+    />
+
+    <!-- 统计卡片 -->
+    <HspStatGrid :stats="stats" />
+
+    <!-- 我的体质 -->
+    <HspConstitutionPanel :constitution="latestConstitution" />
+
+    <!-- 健康趋势 -->
+    <HspHealthTrend :user-id="userStore.userInfo?.id" />
+
+    <!-- 推荐药膳 -->
+    <HspRecipeList :recipes="recommendedRecipes" :loading="recipesLoading" />
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, inject, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useUserStore } from '@/stores/user'
+import { usePatientStore } from '@/stores/patient'
+import dayjs from 'dayjs'
+import { getLatestTestResult } from '@/api/constitution'
+import { getRecommendedRecipes } from '@/api/recipe'
+import { getPatientStats } from '@/api/statistics'
+import { checkIsNewUser } from '@/api/user'
+import { getAppConfig } from '@/config/runtimeConfig'
+import HspHeroBanner from '@/components/patient/HspHeroBanner.vue'
+import HspStatGrid from '@/components/patient/HspStatGrid.vue'
+import HspConstitutionPanel from '@/components/patient/HspConstitutionPanel.vue'
+import HspHealthTrend from '@/components/patient/HspHealthTrend.vue'
+import HspRecipeList from '@/components/patient/HspRecipeList.vue'
+
+const router = useRouter()
+const userStore = useUserStore()
+const patientStore = usePatientStore()
+const appConfig = inject('appConfig', getAppConfig())
+const systemName = computed(() => appConfig?.systemInfo?.name || '中医体质辨识系统')
+
+// 统计数据
+const stats = ref({
+  testCount: 0,
+  recipeCount: 0,
+  checkinDays: 0
+})
+
+// 最新体质测试结果
+const latestConstitution = ref(null)
+
+// 推荐药膳
+const recommendedRecipes = ref([])
+const recipesLoading = ref(false)
+
+// 新用户状态
+const isNewUser = ref(false)
+const newUserAlertDismissed = ref(false)
+
+// 并行加载所有数据
+const loadAllData = async () => {
+  const userId = userStore.userInfo?.id
+  if (!userId) {
+    return
+  }
+
+  // 使用 Promise.allSettled 并行请求，即使部分失败也不影响其他数据
+  const results = await Promise.allSettled([
+    // 统计数据
+    getPatientStats({ silentError: true }).then(res => {
+      if (res.code === 200 && res.data) {
+        stats.value = {
+          testCount: res.data.testCount || 0,
+          recipeCount: res.data.recipeCount || 0,
+          checkinDays: res.data.checkinDays || 0
+        }
+      }
+    }).catch(() => {
+      // 使用默认值
+      stats.value = { testCount: 0, recipeCount: 0, checkinDays: 0 }
+    }),
+
+    // 最新体质测试结果
+    getLatestTestResult({ silentError: true }).then(res => {
+      if (res.code === 200 && res.data) {
+        const result = res.data
+        const primaryDetail = result.primaryConstitutionDetail || {}
+        const tips = []
+        if (primaryDetail.healthAdvice) tips.push(primaryDetail.healthAdvice)
+        if (primaryDetail.dietAdvice) tips.push(primaryDetail.dietAdvice)
+        if (primaryDetail.exerciseAdvice) tips.push(primaryDetail.exerciseAdvice)
+
+        latestConstitution.value = {
+            id: result.id,
+          type: result.primaryConstitutionName || primaryDetail.typeName || result.primaryConstitution,
+          description: primaryDetail.description || primaryDetail.characteristics || '',
+          testDate: dayjs(result.testDate).format('YYYY-MM-DD'),
+          tips: tips
+        }
+      } else {
+        latestConstitution.value = null
+      }
+    }).catch(() => {
+      latestConstitution.value = null
+    }),
+
+    // 推荐药膳
+    (async () => {
+      recipesLoading.value = true
+      try {
+        const res = await getRecommendedRecipes({ pageNum: 1, pageSize: 3 }, { silentError: true })
+        if (res.code === 200 && res.data) {
+          const records = res.data.records || res.data.list || res.data || []
+          recommendedRecipes.value = records.slice(0, 3).map(recipe => ({
+            id: recipe.id,
+            name: recipe.recipeName,
+            effect: recipe.efficacy || '',
+            season: recipe.season || 'ALL',
+            constitution: recipe.constitutionType || '',
+            image: recipe.image || '',
+            recommendationReason: recipe.recommendationReason || ''
+          }))
+        } else {
+          recommendedRecipes.value = []
+        }
+      } catch (error) {
+        recommendedRecipes.value = []
+      } finally {
+        recipesLoading.value = false
+      }
+    })()
+  ])
+}
+
+// 检查新用户状态
+const checkNewUser = async () => {
+  try {
+    const res = await checkIsNewUser()
+    if (res.code === 200) {
+      isNewUser.value = res.data === true
+    }
+  } catch (error) {
+    // 静默失败
+  }
+}
+
+// 跳转到智能测试页面
+const goToSmartTest = () => {
+  router.push('/patient/constitution/smart-test')
+}
+
+// 页面加载时执行
+onMounted(async () => {
+  // 检查新用户状态
+  await checkNewUser()
+  
+  await loadAllData()
+  
+  // 加载患者端数据（不影响首屏）
+  patientStore.fetchHealthStats({
+    startDate: dayjs().subtract(30, 'day').format('YYYY-MM-DD'),
+    endDate: dayjs().format('YYYY-MM-DD')
+  }).catch(() => {
+    // 静默失败
+  })
+})
+</script>
+
+<style scoped lang="scss">
+@import '@/styles/home-variables.scss';
+
+.home-container {
+  max-width: $breakpoint-xl;
+  margin: 0 auto;
+  padding: 0 $spacing-md;
+}
+</style>

@@ -1,0 +1,750 @@
+// ==================== 管理员页面统一通用样式 ====================
+
+@use './admin-variables.scss' as *;
+
+// ==================== 统一的卡片样式 ====================
+
+.admin-card {
+  background: $bg-white;
+  border-radius: $border-radius-medium;
+  box-shadow: $shadow-card;
+  transition: $transition-normal;
+  border: 1px solid $border-lighter;
+  overflow: hidden; // 保持hidden以维持圆角效果
+  
+  // 但允许 card-body 中的筛选栏溢出
+  .card-body {
+    overflow-x: visible;
+  }
+
+  &:hover {
+    box-shadow: $shadow-card-hover;
+  }
+
+  .card-header {
+    background: $gradient-primary;
+    color: $bg-white;
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    h2, h3 {
+      margin: 0;
+      font-size: $font-size-large;
+      font-weight: $font-weight-medium;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      .el-icon {
+        font-size: $font-size-xl;
+      }
+    }
+
+    .header-actions {
+      display: flex;
+      gap: $spacing-medium;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+  }
+
+  .card-body {
+    padding: $spacing-medium;
+  }
+}
+
+// ==================== 统一的表格样式 ====================
+
+.admin-table {
+  border-radius: $border-radius-small;
+  overflow: hidden;
+
+  :deep(.el-table__header) {
+    th {
+      background: linear-gradient(to bottom, #fafafa, #f5f5f5);
+      color: $text-primary;
+      font-weight: $font-weight-bold;
+      border-bottom: 2px solid $border-light;
+      font-size: $font-size-base;
+    }
+  }
+
+  :deep(.el-table__row) {
+    transition: $transition-fast;
+
+    &:hover {
+      background-color: #f5f7fa;
+    }
+  }
+
+  :deep(.el-table__body) {
+    td {
+      border-bottom: 1px solid $border-extra-light;
+    }
+  }
+
+  // 表格内的标签样式
+  :deep(.el-tag) {
+    border-radius: $border-radius-small;
+    padding: 4px 12px;
+    font-weight: $font-weight-medium;
+  }
+}
+
+// ==================== 统一的按钮组样式 ====================
+
+.admin-actions {
+  display: flex;
+  gap: $spacing-small;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+// ==================== 统一的搜索框样式 ====================
+
+.admin-search {
+  min-width: 250px;
+
+  .el-input {
+    width: 100%;
+    border-radius: $border-radius-small;
+
+    :deep(.el-input__wrapper) {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      transition: $transition-fast;
+      border-radius: $border-radius-small;
+      background-color: $bg-white;
+
+      &:hover {
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+      }
+
+      &.is-focus {
+        box-shadow: 0 2px 12px rgba(64, 158, 255, 0.2);
+      }
+    }
+
+    :deep(.el-input__inner) {
+      height: 36px;
+    }
+  }
+}
+
+// ==================== 统一的分页样式 ====================
+
+.admin-pagination {
+  margin-top: $spacing-medium;
+  display: flex;
+  justify-content: center;
+  padding: 15px 0;
+  border-radius: $border-radius-small;
+
+  :deep(.el-pagination) {
+    .btn-prev,
+    .btn-next,
+    .el-pager li {
+      border-radius: $border-radius-small;
+      transition: $transition-fast;
+
+      &:hover {
+        transform: translateY(-2px);
+      }
+    }
+
+    .el-pager li.is-active {
+      background: transparent !important;
+      border-color: $primary-color !important;
+      color: $primary-color !important;
+      box-shadow: none;
+    }
+  }
+}
+
+// ==================== 统一的表单样式 ====================
+
+.admin-form {
+  .el-form-item {
+    margin-bottom: $spacing-medium;
+
+    .el-input,
+    .el-select,
+    .el-date-picker,
+    .el-textarea {
+      :deep(.el-input__wrapper),
+      :deep(.el-textarea__inner) {
+        border-radius: $border-radius-small;
+        transition: $transition-fast;
+
+        &:hover {
+          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        &.is-focus {
+          box-shadow: 0 2px 12px rgba(64, 158, 255, 0.15);
+        }
+      }
+    }
+
+    .el-input-number {
+      :deep(.el-input__wrapper) {
+        border-radius: $border-radius-small;
+      }
+    }
+  }
+
+  .form-actions {
+    display: flex;
+    gap: $spacing-small;
+    justify-content: flex-end;
+    margin-top: $spacing-large;
+    padding-top: $spacing-medium;
+    border-top: 1px solid $border-extra-light;
+  }
+}
+
+// ==================== 统一的对话框样式 ====================
+
+.admin-dialog {
+  :deep(.el-dialog) {
+    border-radius: $border-radius-medium;
+    box-shadow: $shadow-dialog;
+  }
+
+  :deep(.el-dialog__header) {
+    background: $gradient-primary;
+    color: $bg-white;
+    padding: 16px 20px;
+    border-radius: $border-radius-medium $border-radius-medium 0 0;
+    margin: 0;
+  }
+
+  :deep(.el-dialog__title) {
+    color: $bg-white;
+    font-weight: $font-weight-medium;
+    font-size: $font-size-large;
+  }
+
+  :deep(.el-dialog__headerbtn) {
+    top: 16px;
+    right: 20px;
+
+    .el-dialog__close {
+      color: $bg-white;
+      font-size: $font-size-large;
+      transition: $transition-fast;
+
+      &:hover {
+        transform: rotate(90deg);
+      }
+    }
+  }
+
+  :deep(.el-dialog__body) {
+    padding: $spacing-medium;
+  }
+
+  :deep(.el-dialog__footer) {
+    padding: $spacing-medium;
+    border-top: 1px solid $border-extra-light;
+  }
+}
+
+// ==================== 统一的标签样式 ====================
+
+.admin-tag {
+  border-radius: $border-radius-small;
+  padding: 4px 12px;
+  font-weight: $font-weight-medium;
+  font-size: $font-size-small;
+}
+
+// ==================== 统一的统计卡片 ====================
+
+.stat-card {
+  background: $bg-white;
+  border-radius: $border-radius-medium;
+  padding: $spacing-medium;
+  box-shadow: $shadow-card;
+  transition: $transition-normal;
+  border: 1px solid $border-lighter;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: $gradient-primary;
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: $transition-normal;
+  }
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: $shadow-card-hover;
+
+    &::before {
+      transform: scaleX(1);
+    }
+  }
+
+  .stat-icon {
+    width: 60px;
+    height: 60px;
+    border-radius: $border-radius-circle;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    margin-bottom: 15px;
+    transition: $transition-normal;
+  }
+
+  &:hover .stat-icon {
+    transform: scale(1.1) rotate(5deg);
+  }
+
+  .stat-value {
+    font-size: $font-size-huge;
+    font-weight: $font-weight-bold;
+    color: $text-primary;
+    margin-bottom: 8px;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: $font-size-base;
+    color: $text-secondary;
+    font-weight: $font-weight-normal;
+  }
+
+  .stat-trend {
+    margin-top: $spacing-small;
+    font-size: $font-size-small;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    &.up {
+      color: $success-color;
+    }
+
+    &.down {
+      color: $danger-color;
+    }
+  }
+
+  // 不同类型的统计卡片
+  &.primary {
+    .stat-icon {
+      background: $gradient-primary-light;
+      color: #667eea;
+    }
+
+    &::before {
+      background: $gradient-primary;
+    }
+  }
+
+  &.success {
+    .stat-icon {
+      background: $gradient-success-light;
+      color: $success-color;
+    }
+
+    &::before {
+      background: $gradient-success;
+    }
+  }
+
+  &.warning {
+    .stat-icon {
+      background: $gradient-warning-light;
+      color: $warning-color;
+    }
+
+    &::before {
+      background: $gradient-warning;
+    }
+  }
+
+  &.danger {
+    .stat-icon {
+      background: $gradient-danger-light;
+      color: $danger-color;
+    }
+
+    &::before {
+      background: $gradient-danger;
+    }
+  }
+}
+
+// ==================== 筛选区域样式 ====================
+
+.admin-filter {
+  margin-bottom: $spacing-medium;
+  padding: $spacing-medium;
+  background: $bg-light;
+  border-radius: $border-radius-small;
+  border: 1px solid $border-extra-light;
+
+  :deep(.el-form) {
+    margin-bottom: 0;
+  }
+
+  :deep(.el-form--inline) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0;
+  }
+
+  :deep(.el-form-item) {
+    display: inline-flex;
+    align-items: center;
+    margin-bottom: 0;
+    margin-right: $spacing-medium;
+    vertical-align: middle;
+
+    &:last-child {
+      margin-right: 0;
+    }
+  }
+
+  :deep(.el-form-item__label) {
+    min-width: auto;
+    padding-right: 8px;
+    white-space: nowrap;
+  }
+
+  :deep(.el-select) {
+    min-width: 150px;
+    width: 150px;
+  }
+
+  :deep(.el-date-editor) {
+    min-width: 240px;
+    width: 240px;
+  }
+}
+
+// ==================== 空状态样式 ====================
+
+.admin-empty {
+  text-align: center;
+  padding: $spacing-xl 0;
+  color: $text-secondary;
+
+  .empty-icon {
+    font-size: 64px;
+    color: $border-base;
+    margin-bottom: $spacing-medium;
+  }
+
+  .empty-text {
+    font-size: $font-size-base;
+    color: $text-secondary;
+  }
+
+  .empty-action {
+    margin-top: $spacing-medium;
+  }
+}
+
+// ==================== 加载状态样式 ====================
+
+.admin-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-xl 0;
+  color: $text-secondary;
+
+  .loading-icon {
+    font-size: 48px;
+    color: $primary-color;
+    margin-bottom: $spacing-medium;
+    animation: rotate 1.5s linear infinite;
+  }
+
+  .loading-text {
+    font-size: $font-size-base;
+    color: $text-secondary;
+  }
+}
+
+@keyframes rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ==================== 详情展示样式 ====================
+
+.admin-detail {
+  .detail-section {
+    margin-bottom: $spacing-large;
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  .section-title {
+    font-size: $font-size-medium;
+    font-weight: $font-weight-bold;
+    color: $text-primary;
+    margin-bottom: $spacing-medium;
+    padding-bottom: $spacing-small;
+    border-bottom: 2px solid $border-extra-light;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+
+    .el-icon {
+      color: $primary-color;
+    }
+  }
+
+  .detail-item {
+    display: flex;
+    padding: $spacing-small 0;
+    border-bottom: 1px solid $border-extra-light;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .item-label {
+      width: 120px;
+      color: $text-secondary;
+      font-size: $font-size-base;
+      flex-shrink: 0;
+    }
+
+    .item-value {
+      flex: 1;
+      color: $text-primary;
+      font-size: $font-size-base;
+      font-weight: $font-weight-medium;
+    }
+  }
+}
+
+// ==================== 状态标签样式 ====================
+
+.status-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border-radius: $border-radius-small;
+  font-size: $font-size-small;
+  font-weight: $font-weight-medium;
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: $border-radius-circle;
+  }
+
+  &.success {
+    background: rgba(103, 194, 58, 0.1);
+    color: $success-color;
+
+    .status-dot {
+      background: $success-color;
+    }
+  }
+
+  &.warning {
+    background: rgba(230, 162, 60, 0.1);
+    color: $warning-color;
+
+    .status-dot {
+      background: $warning-color;
+    }
+  }
+
+  &.danger {
+    background: rgba(245, 108, 108, 0.1);
+    color: $danger-color;
+
+    .status-dot {
+      background: $danger-color;
+    }
+  }
+
+  &.info {
+    background: rgba(144, 147, 153, 0.1);
+    color: $info-color;
+
+    .status-dot {
+      background: $info-color;
+    }
+  }
+
+  &.primary {
+    background: rgba(64, 158, 255, 0.1);
+    color: $primary-color;
+
+    .status-dot {
+      background: $primary-color;
+    }
+  }
+}
+
+// ==================== 响应式布局 ====================
+
+@media (max-width: $breakpoint-sm) {
+  .admin-card {
+    .card-header {
+      flex-direction: column;
+      gap: $spacing-small;
+      align-items: flex-start;
+
+      .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+    }
+  }
+
+  .admin-filter {
+    overflow-x: auto;
+    padding: $spacing-small;
+    
+    .el-form {
+      flex-wrap: wrap;
+      flex-direction: column;
+      align-items: stretch;
+      gap: $spacing-small;
+      
+      .el-form-item {
+        margin-bottom: $spacing-medium;
+        flex: 1 1 auto;
+        min-width: 100%;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+
+    :deep(.el-form-item__label) {
+      width: 100%;
+      text-align: left;
+      margin-bottom: 8px;
+    }
+
+    :deep(.el-select),
+    :deep(.el-date-editor) {
+      width: 100% !important;
+      min-width: 100% !important;
+    }
+  }
+
+  .admin-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .stat-card {
+    .stat-icon {
+      width: 50px;
+      height: 50px;
+      font-size: 24px;
+    }
+
+    .stat-value {
+      font-size: 24px;
+    }
+  }
+
+  .admin-detail {
+    .detail-item {
+      flex-direction: column;
+      gap: 4px;
+
+      .item-label {
+        width: 100%;
+        font-weight: $font-weight-medium;
+      }
+    }
+  }
+}
+
+// ==================== 工具类 ====================
+
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+.mt-small {
+  margin-top: $spacing-small;
+}
+
+.mt-medium {
+  margin-top: $spacing-medium;
+}
+
+.mt-large {
+  margin-top: $spacing-large;
+}
+
+.mb-small {
+  margin-bottom: $spacing-small;
+}
+
+.mb-medium {
+  margin-bottom: $spacing-medium;
+}
+
+.mb-large {
+  margin-bottom: $spacing-large;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-start {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.flex-end {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+

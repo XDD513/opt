@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.hospital.mapper.StatisticsMapper">
+    
+    <!-- 获取管理员统计数据 -->
+    <select id="getAdminStats" resultType="com.hospital.dto.StatisticsDTO$AdminStats">
+        SELECT
+            (SELECT COUNT(*) FROM tcm_user WHERE status = 1) as users
+    </select>
+
+    <!-- 获取患者统计数据 -->
+    <select id="getPatientStats" resultType="com.hospital.dto.StatisticsDTO$PatientStats">
+        SELECT
+            (SELECT COUNT(*) FROM user_constitution_test WHERE user_id = #{patientId}) as testCount,
+            (SELECT COUNT(*) FROM user_favorite WHERE user_id = #{patientId} AND target_type = 'RECIPE') as recipeCount,
+            (SELECT COUNT(DISTINCT checkin_date) FROM tcm_health_checkin
+             WHERE user_id = #{patientId}
+             AND checkin_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) as checkinDays
+    </select>
+</mapper>
