@@ -1,0 +1,23 @@
+{
+  "appointment.advance_days": "7",
+  "appointment.cancel_hours": "2",
+  "email.from_email": "admin",
+  "email.password": "change-me",
+  "email.smtp_host": "",
+  "email.smtp_port": "587",
+  "email.ssl_enabled": true,
+  "notification.appointment_reminder": true,
+  "notification.email_enabled": false,
+  "notification.reminder_hours": "2",
+  "notification.sms_enabled": false,
+  "notification.system_enabled": true,
+  "payment.timeout": "30",
+  "security.lock_duration": "15",
+  "security.login_lock_enabled": false,
+  "security.max_login_attempts": "5",
+  "security.min_password_length": "6",
+  "security.session_timeout": "120",
+  "system.maintenance_mode": false,
+  "system.name": "中医体质辨识系统",
+  "system.version": "v2.0.0"
+}
