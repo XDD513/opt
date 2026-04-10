@@ -72,8 +72,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, inject, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, inject, computed, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import message from '@/plugins/message'
 import { getHealthProfile } from '@/api/health'
 import { isHealthProfileMandatoryComplete } from '@/utils/healthProfileMandatory'
@@ -85,6 +85,7 @@ import { configureRequestClient } from '@/api/request'
 import { useFormValidation } from '@/composables/useFormValidation'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const appConfig = inject('appConfig', getAppConfig())
 const systemTitle = computed(() => appConfig?.systemInfo?.name || '中医体质辨识系统')
@@ -143,9 +144,14 @@ if (typeof window !== 'undefined') {
   }
 }
 
-onMounted(() => {
-  refreshCaptcha()
-})
+// 兼容“返回登录页但组件不重建”的场景：只要路由进入 /login 就刷新验证码
+watch(
+  () => route.fullPath,
+  () => {
+    if (route.path === '/login') refreshCaptcha()
+  },
+  { immediate: true }
+)
 
 // 处理登录
 const handleLogin = async () => {
