@@ -3,6 +3,7 @@ package com.hospital.dto.request;
 import lombok.Data;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.time.LocalDate;
@@ -62,6 +63,7 @@ public class RegisterRequest implements Serializable {
     /**
      * 出生日期
      */
+    @NotNull(message = "请填写出生日期")
     private LocalDate birthDate;
 }
 

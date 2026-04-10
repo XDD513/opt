@@ -90,7 +90,7 @@
             </el-radio-group>
           </el-form-item>
 
-          <el-form-item label="出生日期" prop="birthDate">
+          <el-form-item label="出生日期" prop="birthDate" required>
             <el-date-picker v-model="registerForm.birthDate" type="date" placeholder="请选择出生日期" format="YYYY-MM-DD"
               value-format="YYYY-MM-DD" style="width: 100%" @blur="handleFieldBlur('birthDate')" />
           </el-form-item>
@@ -171,6 +171,9 @@ const registerRules = {
   ],
   idCard: [
     { pattern: /^[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/, message: '请输入正确的身份证号', trigger: 'blur' }
+  ],
+  birthDate: [
+    { required: true, message: '请填写出生日期', trigger: 'change' }
   ]
 }
 
