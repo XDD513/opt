@@ -48,6 +48,7 @@ public class SecurityConfig {
             .and()
             .authorizeRequests()
             .antMatchers("/api/user/login", "/api/user/register", "/api/user/check/**", "/api/user/check-new-user").permitAll()
+            .antMatchers("/api/captcha/**").permitAll()
             .antMatchers("/api/migration/**").permitAll()
             .antMatchers("/api/config").permitAll()
             .antMatchers("/ws/**").permitAll()

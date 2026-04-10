@@ -20,6 +20,7 @@ import com.hospital.dto.response.UserInfoResponse;
 import com.hospital.dto.response.UserSettingsResponse;
 import com.hospital.entity.User;
 import com.hospital.mapper.UserMapper;
+import com.hospital.service.CaptchaService;
 import com.hospital.service.OssService;
 import com.hospital.service.UserService;
 import com.hospital.util.JwtUtil;
@@ -76,6 +77,9 @@ public class UserServiceImpl implements UserService {
     @Autowired
     private SystemSettingManager systemSettingManager;
 
+    @Autowired
+    private CaptchaService captchaService;
+
     // 用户存在性检查短缓存TTL（秒），可配置
     @Value("${hospital.cache.ttl.exists-seconds:60}")
     private long existsTtlSeconds;
@@ -98,6 +102,10 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public Result<LoginResponse> login(LoginRequest request) {
+        if (!captchaService.validateAndConsume(request.getCaptchaId(), request.getCaptchaCode())) {
+            return Result.error(ResultCode.PARAM_ERROR.getCode(), "验证码错误");
+        }
+
         // 1. 根据用户名查询用户
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("username", request.getUsername());

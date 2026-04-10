@@ -57,8 +57,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 登录注册接口不需要验证
         if (requestURI.contains("/login") || requestURI.contains("/register") ||
             requestURI.contains("/user/check") || requestURI.contains("/swagger") ||
-            requestURI.contains("/v3/api-docs") || requestURI.contains("/migration") || 
-            requestURI.contains("/api/config")) {
+            requestURI.contains("/v3/api-docs") || requestURI.contains("/migration") ||
+            requestURI.contains("/api/config") || requestURI.contains("/api/captcha")) {
             filterChain.doFilter(request, response);
             return;
         }

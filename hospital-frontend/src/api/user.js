@@ -7,7 +7,24 @@ export function login(data) {
   return request({
     url: '/user/login',
     method: 'post',
-    data
+    data: {
+      username: data.username,
+      password: data.password,
+      captchaId: data.captchaId,
+      captchaCode: data.captchaCode
+    },
+    silentError: true
+  })
+}
+
+/**
+ * 获取登录图形验证码
+ */
+export function getCaptchaImage() {
+  return request({
+    url: '/captcha/image',
+    method: 'get',
+    silentError: true
   })
 }
 

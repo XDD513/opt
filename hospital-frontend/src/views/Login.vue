@@ -18,6 +18,28 @@
                 :prefix-icon="Lock" show-password clearable @keyup.enter="handleLogin" @blur="handleFieldBlur('password')" />
             </el-form-item>
 
+            <el-form-item label-width="0" class="captcha-row">
+              <div class="captcha-line">
+                <el-input
+                  v-model="loginForm.captchaCode"
+                  placeholder="验证码"
+                  size="large"
+                  maxlength="6"
+                  clearable
+                  class="captcha-input"
+                  @keyup.enter="handleLogin"
+                />
+                <img
+                  v-if="captchaImageSrc"
+                  :src="captchaImageSrc"
+                  alt=""
+                  class="captcha-img"
+                  @click="refreshCaptcha"
+                />
+              </div>
+              <el-link type="primary" :underline="false" class="captcha-refresh" @click="refreshCaptcha">换一张</el-link>
+            </el-form-item>
+
           <el-form-item>
             <div class="options-row">
               <el-checkbox v-model="loginForm.rememberMe">记住用户名</el-checkbox>
@@ -26,7 +48,14 @@
           </el-form-item>
 
             <el-form-item>
-              <el-button type="primary" size="large" :loading="loading" @click="handleLogin" class="login-button">
+              <el-button
+                type="primary"
+                size="large"
+                :loading="loading"
+                :disabled="!canSubmitLogin"
+                @click="handleLogin"
+                class="login-button"
+              >
                 {{ loading ? '登录中...' : '登 录' }}
               </el-button>
             </el-form-item>
@@ -44,11 +73,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, inject, computed } from 'vue'
+import { ref, reactive, inject, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import message from '@/plugins/message'
-import { User, Lock, CircleCheck, Calendar, Document } from '@element-plus/icons-vue'
-import { login, getUserInfo } from '@/api/user'
+import { User, Lock } from '@element-plus/icons-vue'
+import { login, getUserInfo, getCaptchaImage } from '@/api/user'
 import { useUserStore } from '@/stores/user'
 import { getAppConfig, loadAppConfig } from '@/config/runtimeConfig'
 import { configureRequestClient } from '@/api/request'
@@ -63,8 +92,30 @@ const systemTitle = computed(() => appConfig?.systemInfo?.name || '中医体质�
 const loginForm = reactive({
   username: '',
   password: '',
+  captchaId: '',
+  captchaCode: '',
   rememberMe: true
 })
+
+const captchaImageSrc = ref('')
+
+const canSubmitLogin = computed(() => String(loginForm.captchaCode || '').trim().length > 0)
+
+const refreshCaptcha = async () => {
+  loginForm.captchaCode = ''
+  loginForm.captchaId = ''
+  captchaImageSrc.value = ''
+  try {
+    const res = await getCaptchaImage()
+    if (res.code === 200 && res.data) {
+      loginForm.captchaId = res.data.captchaId || ''
+      const b64 = res.data.imageBase64 || ''
+      captchaImageSrc.value = b64 ? `data:image/png;base64,${b64}` : ''
+    }
+  } catch {
+    captchaImageSrc.value = ''
+  }
+}
 
 // 表单验证规则
 const loginRules = {
@@ -90,6 +141,10 @@ if (typeof window !== 'undefined') {
     loginForm.username = savedUsername
   }
 }
+
+onMounted(() => {
+  refreshCaptcha()
+})
 
 // 处理登录
 const handleLogin = async () => {
@@ -155,7 +210,9 @@ const handleLogin = async () => {
         router.push(homePath)
       }
     } catch (error) {
-      message.error((error && error.message) || '登录失败，请重试')
+      const msg = (error && error.message) || '登录失败，请重试'
+      message.error(msg)
+      await refreshCaptcha()
     } finally {
       loading.value = false
     }
@@ -297,5 +354,28 @@ const goToRegister = () => {
   width: 100%;
   font-size: 13px;
   color: #666;
+}
+
+.captcha-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.captcha-input {
+  flex: 1;
+  min-width: 0;
+}
+.captcha-img {
+  height: 40px;
+  width: 110px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+}
+.captcha-refresh {
+  margin-top: 6px;
+  font-size: 13px;
 }
 </style>

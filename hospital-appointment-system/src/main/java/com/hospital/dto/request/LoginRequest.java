@@ -27,6 +27,12 @@ public class LoginRequest implements Serializable {
      */
     @NotBlank(message = "密码不能为空")
     private String password;
+
+    @NotBlank(message = "验证码错误")
+    private String captchaId;
+
+    @NotBlank(message = "验证码错误")
+    private String captchaCode;
 }
 
 
