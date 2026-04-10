@@ -121,8 +121,8 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useConstitutionTest } from '@/composables/useConstitutionTest'
 import TestResult from '@/components/patient/constitution/TestResult.vue'
 import TongueDiagnosisUpload from '@/components/patient/constitution/TongueDiagnosisUpload.vue'
@@ -479,15 +479,29 @@ watch(() => route.query.appointmentId, (newAppointmentId) => {
   }
 })
 
+const clearUnsubmittedDraft = () => {
+  if (!state.isSubmitted) {
+    resetForm()
+    uploadKey.value += 1
+  }
+}
+
+onBeforeRouteLeave(() => {
+  clearUnsubmittedDraft()
+})
+
+onBeforeUnmount(() => {
+  clearUnsubmittedDraft()
+})
+
 // 初始化
 onMounted(async () => {
-  // 初始化appointmentId
   initAppointmentId()
-  // 预加载季节字典与当前季节值
   await loadSeasonDictionary()
-  // 仅在无草稿状态时初始化，避免离开后返回被重置
-  const hasDraft = Boolean(state.tongueResult || state.testResult || state.userSelfDescription)
-  if (!hasDraft) {
+  if (!state.isSubmitted) {
+    resetForm()
+    uploadKey.value += 1
+  } else {
     await loadQuestions()
   }
   state.isInitialized = true
