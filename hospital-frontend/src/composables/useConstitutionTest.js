@@ -1,6 +1,7 @@
 import { reactive, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import message from '@/plugins/message'
 import notify from '@/plugins/notify'
 import { useUserStore } from '@/stores/user'
 import { submitTest as submitTestApi, checkTestByAppointment, getTestReport } from '@/api/constitution'
@@ -267,6 +268,14 @@ export function useConstitutionTest() {
     return { code: bestCode, score: bestScore }
   }
 
+  const isTongueAnalysisRecognized = (data) => {
+    if (!data || data.is_fallback === true) return false
+    if (Array.isArray(data.features_list) && data.features_list.length > 0) return true
+    if (Array.isArray(data.features_detail) && data.features_detail.length > 0) return true
+    const feature = String(data.feature || '').trim()
+    return Boolean(feature) && feature !== '识别服务暂时不可用'
+  }
+
   /**
    * 提交测试
    * @returns {Promise<boolean>} 是否提交成功
@@ -283,7 +292,7 @@ export function useConstitutionTest() {
       try {
         const hpRes = await getHealthProfile(userId)
         if (hpRes.code === 200 && !isHealthProfileMandatoryComplete(hpRes.data)) {
-          notify.warning({ message: '请进行健康档案填写' })
+          message.warning('请进行健康档案填写')
           return false
         }
       } catch {
@@ -291,8 +300,13 @@ export function useConstitutionTest() {
       }
     }
 
-    // 舌诊测试：必须有舌诊结果
-    if (!state.tongueResult) {
+    if (state.tongueAnalysisRaw?.is_fallback === true) {
+      message.warning('识别服务暂时不可用')
+      return false
+    }
+
+    // 舌诊测试：必须是有效识别结果
+    if (!isTongueAnalysisRecognized(state.tongueAnalysisRaw) || !state.tongueResult) {
       ElMessage.warning('请先完成舌诊分析')
       return false
     }
@@ -313,7 +327,8 @@ export function useConstitutionTest() {
         features_list: state.tongueFeatures || [],
         features_detail: state.featuresDetail || [],
         ml_scores: state.mlScores || null,
-        image_url: state.tongueImageUrl // 包含 OSS 图片链接
+        image_url: state.tongueImageUrl, // 包含 OSS 图片链接
+        is_fallback: false
       })
 
       const submitData = {
@@ -362,7 +377,7 @@ export function useConstitutionTest() {
       } else {
         const errorMsg = getErrorMessage(res, { defaultMessage: '生成报告失败' })
         if (errorMsg === '请进行健康档案填写') {
-          notify.warning({ message: '请进行健康档案填写' })
+          message.warning('请进行健康档案填写')
         } else {
           ElMessage.error(errorMsg)
         }
@@ -371,7 +386,7 @@ export function useConstitutionTest() {
     } catch (error) {
       const errorMsg = getErrorMessage(error, { defaultMessage: '生成报告异常' })
       if (errorMsg === '请进行健康档案填写') {
-        notify.warning({ message: '请进行健康档案填写' })
+        message.warning('请进行健康档案填写')
       } else {
         ElMessage.error(errorMsg)
       }
