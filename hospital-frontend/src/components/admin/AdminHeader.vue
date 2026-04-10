@@ -23,7 +23,12 @@
     </div>
 
     <div class="header-right">
-      <!-- 管理员名称 -->
+      <button type="button" class="header-notify-btn" aria-label="通知" @click="goArticleNotifications">
+        <svg class="notify-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+      </button>
       <span class="username">管理员：{{ userStore.userInfo.realName || userStore.userInfo.username }}</span>
 
       <!-- 用户头像下拉菜单 -->
@@ -88,6 +93,10 @@ let articleSocket = null
 
 const toggleSidebar = () => {
   emit('toggle-sidebar')
+}
+
+const goArticleNotifications = () => {
+  router.push('/admin/article/notifications')
 }
 
 const handleCommand = (command) => {
@@ -238,6 +247,31 @@ onUnmounted(() => {
     font-size: 14px;
     flex-shrink: 0;
     flex-wrap: wrap;
+
+    .header-notify-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: none;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.15s ease;
+    }
+
+    .header-notify-btn:hover {
+      background: rgba(255, 255, 255, 0.28);
+      transform: scale(1.05);
+    }
+
+    .notify-svg {
+      width: 22px;
+      height: 22px;
+    }
 
     .notification-wrapper {
       position: relative;

@@ -20,6 +20,12 @@
         <span class="logo-text">{{ patientLogoText }}</span>
       </div>
       <div class="header-right">
+        <button type="button" class="header-notify-btn" aria-label="通知" @click="goArticleNotifications">
+          <svg class="notify-svg" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M13.73 21a2 2 0 01-3.46 0" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
         <span class="username">{{ userStore.userInfo.realName || userStore.userInfo.username }}</span>
         <el-dropdown class="avatar-dropdown" trigger="click" @command="handleCommand">
           <el-avatar class="avatar-trigger" :size="40" :src="avatarSrc">
@@ -215,11 +221,13 @@ const handleChatSend = (message) => {
 const avatarSrc = computed(() => userStore.userInfo?.avatar || DEFAULT_AVATAR)
 
 // 下拉菜单命令处理
+const goArticleNotifications = () => {
+  router.push('/patient/article/notifications')
+}
+
 const handleCommand = (command) => {
   if (command === 'profile') {
     router.push('/patient/profile')
-  } else if (command === 'notifications') {
-    router.push('/patient/article/notifications')
   } else if (command === 'logout') {
     ElMessageBox.confirm('确定要退出登录吗？', '提示', {
       confirmButtonText: '确定',
@@ -419,6 +427,31 @@ const formatDateTime = (value) => {
       .notification-text {
         white-space: nowrap;
       }
+    }
+
+    .header-notify-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      border: none;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.15s ease, opacity 0.2s ease;
+    }
+
+    .header-notify-btn:hover {
+      background: rgba(255, 255, 255, 0.32);
+      transform: scale(1.05);
+    }
+
+    .notify-svg {
+      width: 22px;
+      height: 22px;
     }
 
     .username {

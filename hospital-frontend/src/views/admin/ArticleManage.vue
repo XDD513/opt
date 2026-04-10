@@ -8,7 +8,6 @@
             <div class="page-subtitle">统一处理上下架、推荐和内容质量</div>
           </div>
           <div class="header-actions">
-            <el-button @click="$router.push('/admin/article/notifications')">通知中心</el-button>
             <el-button @click="fetchList">刷新</el-button>
           </div>
         </div>

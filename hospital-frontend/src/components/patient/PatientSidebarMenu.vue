@@ -87,12 +87,6 @@
         </el-icon>
         <span>收藏文章</span>
       </el-menu-item>
-      <el-menu-item index="/patient/article/notifications">
-        <el-icon>
-          <Bell />
-        </el-icon>
-        <span>通知中心</span>
-      </el-menu-item>
     </el-sub-menu>
 
     <el-menu-item index="/patient/dialogue">
@@ -147,7 +141,6 @@
 <script setup>
 import {
   Calendar,
-  Bell,
   ChatDotRound,
   ChatLineRound,
   CircleCheck,

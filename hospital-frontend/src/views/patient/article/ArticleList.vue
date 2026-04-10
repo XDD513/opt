@@ -8,7 +8,6 @@
             <div class="page-subtitle">发现优质养生内容，关注你的健康日常</div>
           </div>
           <div class="header-actions">
-            <el-button @click="$router.push('/patient/article/notifications')">通知中心</el-button>
             <el-button @click="$router.push('/patient/article/my-favorites')">我的收藏</el-button>
             <el-button @click="$router.push('/patient/article/my')">我的文章</el-button>
             <el-button type="primary" @click="$router.push('/patient/article/publish')">发布文章</el-button>

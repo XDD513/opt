@@ -133,14 +133,6 @@
             <el-icon class="submenu-icon"><Document /></el-icon>
             <span class="submenu-title">文章管理</span>
           </div>
-          <div
-            class="submenu-item"
-            :class="{ active: activeKey === 'articleNotifications' }"
-            @click="handleMenuClick('articleNotifications', '通知中心')"
-          >
-            <el-icon class="submenu-icon"><Bell /></el-icon>
-            <span class="submenu-title">通知中心</span>
-          </div>
         </div>
       </div>
 
@@ -163,7 +155,7 @@ import {
   House, Setting, UserFilled, ChatLineRound,
   OfficeBuilding, ArrowRight,
   Tools, TrendCharts, Tickets,
-  Collection, Document, DocumentChecked, Bell
+  Collection, Document, DocumentChecked
 } from '@element-plus/icons-vue'
 
 const props = defineProps({
@@ -192,7 +184,7 @@ const isSystemActive = computed(() => {
 })
 
 const isCommunityActive = computed(() => {
-  return ['articleReview', 'articleManage', 'articleNotifications'].includes(props.activeKey)
+  return ['articleReview', 'articleManage'].includes(props.activeKey)
 })
 
 const toggleUserMenu = () => {
