@@ -1,10 +1,10 @@
-<template>
+﻿<template>
   <div class="article-page">
     <el-card class="section-card">
       <template #header>
         <div>
           <div class="page-title">{{ isEdit ? '编辑文章' : '发布文章' }}</div>
-          <div class="page-subtitle">提交后需管理员审核，建议填写完整摘要与标签提升通过率</div>
+          <div class="page-subtitle">{{ isEdit ? '更新已发布内容，保存后立即生效' : '提交后需管理员审核，建议填写完整摘要与标签提升通过率' }}</div>
         </div>
       </template>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
@@ -63,7 +63,7 @@
         <el-form-item label="正文"><el-input v-model="form.content" type="textarea" :rows="12" /></el-form-item>
         <el-form-item label="标签"><el-input v-model="form.tags" placeholder="多个标签用逗号分隔" /></el-form-item>
         <el-form-item>
-          <el-button type="primary" :loading="submitting" @click="submit">{{ isEdit ? '保存并提交' : '提交审核' }}</el-button>
+          <el-button type="primary" :loading="submitting" @click="submit">{{ isEdit ? '保存修改' : '提交审核' }}</el-button>
           <el-button @click="$router.back()">取消</el-button>
         </el-form-item>
       </el-form>
@@ -177,7 +177,7 @@ const submit = async () => {
   try {
     if (isEdit.value) {
       await updateArticle(id.value, form)
-      message.success('保存成功，文章已提交审核，请耐心等待')
+      message.success('文章编辑成功')
     } else {
       await publishArticle(form)
       message.success('提交成功，已进入待审核队列')

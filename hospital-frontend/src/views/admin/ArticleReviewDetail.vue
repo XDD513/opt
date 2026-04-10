@@ -8,75 +8,84 @@
         </el-button>
       </div>
 
-      <el-card class="surface hero-card" shadow="never">
-        <div class="hero">
-          <div class="hero-text">
-            <h1 class="hero-title">文章审核详情</h1>
-            <p class="hero-desc">查看内容详情并进行审核决策</p>
+      <el-card class="main-card" shadow="never">
+        <template #header>
+          <div class="card-top">
+            <div class="title-block">
+              <h1 class="article-title">{{ article.title || '—' }}</h1>
+              <p class="page-hint">审核详情 · 请核对封面、摘要与正文</p>
+            </div>
+            <div class="card-top-actions">
+              <el-tag :type="statusTagType" effect="light" round size="large">{{ statusText }}</el-tag>
+            </div>
           </div>
-          <div v-if="article.status === 0" class="hero-actions">
-            <el-button type="success" size="large" :loading="submitting" @click="approve">通过</el-button>
-            <el-button type="danger" size="large" plain :loading="submitting" @click="openReject">驳回</el-button>
+        </template>
+
+        <div class="card-body-inner">
+          <el-alert
+            v-if="article.rejectReason"
+            class="reject-alert"
+            type="warning"
+            show-icon
+            :closable="false"
+            :title="`${article.status === 2 ? '下架原因' : '驳回原因'}：${article.rejectReason}`"
+          />
+
+          <div class="review-layout">
+            <aside class="cover-col">
+              <div class="cover-label">封面</div>
+              <div v-if="article.coverImage" class="cover-box">
+                <el-image
+                  v-if="coverDisplayUrl"
+                  :src="coverDisplayUrl"
+                  fit="contain"
+                  class="cover-img"
+                  :preview-src-list="coverDisplayUrl ? [coverDisplayUrl] : []"
+                  preview-teleported
+                />
+                <div v-else class="cover-placeholder muted">加载中…</div>
+              </div>
+              <div v-else class="cover-box cover-box--empty muted">暂无封面</div>
+            </aside>
+
+            <div class="detail-col">
+              <dl class="meta-list">
+                <div class="meta-row">
+                  <dt>作者</dt>
+                  <dd>{{ article.authorName || '—' }}</dd>
+                </div>
+                <div class="meta-row">
+                  <dt>分类</dt>
+                  <dd>{{ categoryLabel }}</dd>
+                </div>
+                <div class="meta-row meta-row--tags">
+                  <dt>标签</dt>
+                  <dd>
+                    <template v-if="tagList.length">
+                      <el-tag v-for="t in tagList" :key="t" size="small" effect="plain" class="tag-chip">{{ t }}</el-tag>
+                    </template>
+                    <span v-else class="muted">—</span>
+                  </dd>
+                </div>
+              </dl>
+
+              <section class="text-section">
+                <h2 class="text-section__title">摘要</h2>
+                <div class="prose summary-text">{{ article.summary || '暂无摘要' }}</div>
+              </section>
+
+              <section class="text-section text-section--body">
+                <h2 class="text-section__title">正文</h2>
+                <div class="prose body-scroll">{{ article.content || '暂无正文' }}</div>
+              </section>
+            </div>
           </div>
         </div>
       </el-card>
 
-      <el-card class="surface meta-card" shadow="never">
-        <template #header>
-          <div class="card-header-inner">
-            <span class="card-title">基本信息</span>
-            <el-tag :type="statusTagType" effect="light" round>{{ statusText }}</el-tag>
-          </div>
-        </template>
-        <el-descriptions :column="2" border class="info-desc" size="default">
-          <el-descriptions-item label="标题" :span="2">
-            <span class="value-strong">{{ article.title || '—' }}</span>
-          </el-descriptions-item>
-          <el-descriptions-item label="作者">{{ article.authorName || '—' }}</el-descriptions-item>
-          <el-descriptions-item label="分类">{{ categoryLabel }}</el-descriptions-item>
-          <el-descriptions-item label="标签" :span="2">
-            <template v-if="tagList.length">
-              <el-tag v-for="t in tagList" :key="t" size="small" effect="plain" class="tag-chip">{{ t }}</el-tag>
-            </template>
-            <span v-else class="muted">—</span>
-          </el-descriptions-item>
-        </el-descriptions>
-      </el-card>
-
-      <el-alert
-        v-if="article.rejectReason"
-        class="reject-alert"
-        type="warning"
-        show-icon
-        :closable="false"
-        :title="`${article.status === 2 ? '下架原因' : '驳回原因'}：${article.rejectReason}`"
-      />
-
-      <div class="content-grid">
-        <el-card class="surface content-card" shadow="never">
-          <template #header>
-            <div class="section-head">
-              <span class="section-bar" aria-hidden="true" />
-              <span class="section-title">摘要</span>
-            </div>
-          </template>
-          <div class="prose summary-body">{{ article.summary || '暂无摘要' }}</div>
-        </el-card>
-
-        <el-card class="surface content-card content-card--body" shadow="never">
-          <template #header>
-            <div class="section-head">
-              <span class="section-bar section-bar--body" aria-hidden="true" />
-              <span class="section-title">正文</span>
-            </div>
-          </template>
-          <div class="prose body-text">{{ article.content || '暂无正文' }}</div>
-        </el-card>
-      </div>
-
       <div v-if="article.status === 0" class="sticky-bar">
         <div class="sticky-inner">
-          <span class="sticky-hint">待审核：请通读摘要与正文后作出决定</span>
+          <span class="sticky-hint">待审核：确认无误后可通过，有问题请驳回并填写原因</span>
           <div class="sticky-actions">
             <el-button type="success" :loading="submitting" @click="approve">通过</el-button>
             <el-button type="danger" plain :loading="submitting" @click="openReject">驳回</el-button>
@@ -105,13 +114,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeft } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import message from '@/plugins/message'
 import { getArticleDetail, reviewArticle } from '@/api/article'
 import { formatArticleCategory } from '@/utils/articleCategory'
+import { resolveOssPreviewUrl, sanitizeStoredMediaUrl } from '@/utils/ossPreview'
 
 const route = useRoute()
 const router = useRouter()
@@ -129,6 +139,24 @@ const tagList = computed(() => {
 })
 
 const categoryLabel = computed(() => formatArticleCategory(article.value?.category))
+
+const coverDisplayUrl = ref('')
+let coverPreviewSeq = 0
+watch(
+  () => article.value?.coverImage,
+  async (url) => {
+    const seq = ++coverPreviewSeq
+    if (!url) {
+      coverDisplayUrl.value = ''
+      return
+    }
+    const clean = sanitizeStoredMediaUrl(String(url))
+    const preview = await resolveOssPreviewUrl(clean, 60)
+    if (seq !== coverPreviewSeq) return
+    coverDisplayUrl.value = preview
+  },
+  { immediate: true }
+)
 
 const statusText = computed(() => {
   const s = article.value?.status
@@ -212,13 +240,13 @@ onMounted(fetchDetail)
 }
 
 .page-inner {
-  max-width: 1040px;
+  max-width: 1100px;
   margin: 0 auto;
   padding-bottom: 88px;
 }
 
 .toolbar {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .back-btn {
@@ -231,126 +259,192 @@ onMounted(fetchDetail)
   vertical-align: middle;
 }
 
-.surface {
+.main-card {
   border-radius: 12px;
   border: 1px solid var(--el-border-color-lighter);
-  margin-bottom: 16px;
 }
 
-.surface :deep(.el-card__header) {
+.main-card :deep(.el-card__header) {
+  padding: 16px 20px;
   border-bottom: 1px solid var(--el-border-color-lighter);
-  padding: 14px 20px;
 }
 
-.surface :deep(.el-card__body) {
-  padding: 20px;
+.main-card :deep(.el-card__body) {
+  padding: 0;
 }
 
-.hero-card :deep(.el-card__body) {
-  padding: 22px 24px;
-}
-
-.hero {
+.card-top {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
 }
 
-.hero-title {
+.title-block {
+  min-width: 0;
+  flex: 1;
+}
+
+.article-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 20px;
   font-weight: 600;
   color: var(--el-text-color-primary);
-  letter-spacing: 0.02em;
+  line-height: 1.4;
+  word-break: break-word;
 }
 
-.hero-desc {
-  margin: 8px 0 0;
+.page-hint {
+  margin: 6px 0 0;
+  font-size: 13px;
+  color: var(--el-text-color-secondary);
+}
+
+.card-top-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.card-body-inner {
+  padding: 20px;
+}
+
+.reject-alert {
+  margin-bottom: 20px;
+  border-radius: 8px;
+}
+
+.review-layout {
+  display: grid;
+  grid-template-columns: minmax(200px, 280px) 1fr;
+  gap: 24px 28px;
+  align-items: start;
+}
+
+.cover-col {
+  position: sticky;
+  top: 16px;
+}
+
+.cover-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--el-text-color-secondary);
+  margin-bottom: 10px;
+}
+
+.cover-box {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--el-fill-color-light);
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.cover-box--empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 14px;
-  color: var(--el-text-color-secondary);
-  line-height: 1.5;
 }
 
-.hero-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
-
-.card-header-inner {
+.cover-placeholder {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  height: 100%;
+  font-size: 14px;
+}
+
+.cover-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.cover-img :deep(.el-image__wrapper),
+.cover-img :deep(.el-image__inner) {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.cover-img :deep(.el-image__inner) {
+  object-fit: contain;
+}
+
+.detail-col {
+  min-width: 0;
+}
+
+.meta-list {
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  background: var(--el-fill-color-blank, #fafafa);
+  border-radius: 10px;
+  border: 1px solid var(--el-border-color-lighter);
+}
+
+.meta-row {
+  display: grid;
+  grid-template-columns: 52px 1fr;
   gap: 12px;
-  flex-wrap: wrap;
-}
-
-.card-title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
-}
-
-.info-desc {
-  --el-descriptions-item-bordered-label-background: var(--el-fill-color-light);
-}
-
-.info-desc :deep(.el-descriptions__label) {
-  width: 88px;
-  font-weight: 500;
-  color: var(--el-text-color-secondary);
-}
-
-.value-strong {
-  font-weight: 500;
-  color: var(--el-text-color-primary);
+  font-size: 14px;
   line-height: 1.6;
+  padding: 6px 0;
+}
+
+.meta-row:not(:last-child) {
+  border-bottom: 1px dashed var(--el-border-color-lighter);
+}
+
+.meta-row dt {
+  margin: 0;
+  color: var(--el-text-color-secondary);
+  font-weight: 500;
+}
+
+.meta-row dd {
+  margin: 0;
+  color: var(--el-text-color-primary);
+  word-break: break-word;
+}
+
+.meta-row--tags dd {
+  line-height: 1.8;
 }
 
 .tag-chip {
-  margin: 0 8px 6px 0;
+  margin: 0 8px 4px 0;
 }
 
 .muted {
   color: var(--el-text-color-placeholder);
 }
 
-.reject-alert {
-  margin-bottom: 16px;
-  border-radius: 10px;
+.text-section {
+  margin-bottom: 20px;
 }
 
-.content-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+.text-section:last-child {
+  margin-bottom: 0;
 }
 
-.section-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.section-bar {
-  width: 4px;
-  height: 16px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, var(--el-color-primary) 0%, var(--el-color-primary-light-3) 100%);
-  flex-shrink: 0;
-}
-
-.section-bar--body {
-  background: linear-gradient(180deg, #67c23a 0%, #95d475 100%);
-}
-
-.section-title {
+.text-section__title {
+  margin: 0 0 10px;
   font-size: 15px;
   font-weight: 600;
   color: var(--el-text-color-primary);
+  padding-left: 10px;
+  border-left: 3px solid var(--el-color-primary);
+}
+
+.text-section--body .text-section__title {
+  border-left-color: #67c23a;
 }
 
 .prose {
@@ -360,26 +454,26 @@ onMounted(fetchDetail)
   letter-spacing: 0.01em;
 }
 
-.summary-body {
-  min-height: 48px;
+.summary-text {
+  padding: 0 2px;
 }
 
-.body-text {
+.body-scroll {
   white-space: pre-wrap;
   word-break: break-word;
-  min-height: 120px;
-}
-
-.content-card--body :deep(.el-card__body) {
-  max-height: min(60vh, 640px);
+  max-height: min(52vh, 560px);
   overflow-y: auto;
+  padding: 12px 14px;
+  background: var(--el-fill-color-blank, #fafafa);
+  border-radius: 8px;
+  border: 1px solid var(--el-border-color-extra-light);
 }
 
 .sticky-bar {
   position: sticky;
   bottom: 16px;
   z-index: 10;
-  margin-top: 8px;
+  margin-top: 16px;
 }
 
 .sticky-inner {
@@ -392,7 +486,7 @@ onMounted(fetchDetail)
   background: var(--el-bg-color-overlay, #fff);
   border-radius: 12px;
   border: 1px solid var(--el-border-color-lighter);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
 }
 
 .sticky-hint {
@@ -411,30 +505,30 @@ onMounted(fetchDetail)
   gap: 8px;
 }
 
+@media (max-width: 900px) {
+  .review-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .cover-col {
+    position: static;
+    max-width: 360px;
+    margin: 0 auto;
+  }
+}
+
 @media (max-width: 768px) {
   .review-detail {
     padding: 12px 12px 24px;
   }
 
-  .hero-title {
+  .article-title {
     font-size: 18px;
-  }
-
-  .hero-actions {
-    width: 100%;
-  }
-
-  .hero-actions .el-button {
-    flex: 1;
   }
 
   .sticky-inner {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .sticky-actions {
-    justify-content: stretch;
   }
 
   .sticky-actions .el-button {
