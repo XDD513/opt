@@ -37,7 +37,8 @@ export function submitTest(data) {
   return request({
     url: '/constitution/test/submit',
     method: 'post',
-    data
+    data,
+    silentError: true
   })
 }
 

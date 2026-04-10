@@ -186,6 +186,10 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
     @Transactional(rollbackFor = Exception.class)
     public Result<TestResultResponse> submitTest(Long userId, SubmitTestRequest request) {
         try {
+            if (!healthProfileService.isMandatoryHealthProfileComplete(userId)) {
+                return Result.error(ResultCode.PARAM_ERROR.getCode(), "请进行健康档案填写");
+            }
+
             // 0. appointment 模块已下线：不再通过 appointmentId 校验重复提交
 
             // 1. 验证输入：问卷体系已下线，仅支持舌诊/多模态智能辨识

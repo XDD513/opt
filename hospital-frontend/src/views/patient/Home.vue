@@ -1,24 +1,5 @@
 <template>
   <div class="home-container">
-    <!-- 新用户提醒 -->
-    <el-alert
-      v-if="isNewUser && !newUserAlertDismissed"
-      title="欢迎新用户"
-      type="info"
-      :closable="true"
-      @close="newUserAlertDismissed = true"
-      style="margin-bottom: 20px;"
-    >
-      <template #default>
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <span>请进行体质测试。</span>
-          <el-button type="primary" size="small" @click="goToSmartTest" style="margin-left: 16px;">
-            立即测试
-          </el-button>
-        </div>
-      </template>
-    </el-alert>
-
     <!-- 欢迎横幅 -->
     <HspHeroBanner 
       :system-name="systemName" 
@@ -41,14 +22,12 @@
 
 <script setup>
 import { ref, computed, inject, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { usePatientStore } from '@/stores/patient'
 import dayjs from 'dayjs'
 import { getLatestTestResult } from '@/api/constitution'
 import { getRecommendedRecipes } from '@/api/recipe'
 import { getPatientStats } from '@/api/statistics'
-import { checkIsNewUser } from '@/api/user'
 import { getAppConfig } from '@/config/runtimeConfig'
 import HspHeroBanner from '@/components/patient/HspHeroBanner.vue'
 import HspStatGrid from '@/components/patient/HspStatGrid.vue'
@@ -56,7 +35,6 @@ import HspConstitutionPanel from '@/components/patient/HspConstitutionPanel.vue'
 import HspHealthTrend from '@/components/patient/HspHealthTrend.vue'
 import HspRecipeList from '@/components/patient/HspRecipeList.vue'
 
-const router = useRouter()
 const userStore = useUserStore()
 const patientStore = usePatientStore()
 const appConfig = inject('appConfig', getAppConfig())
@@ -75,10 +53,6 @@ const latestConstitution = ref(null)
 // 推荐药膳
 const recommendedRecipes = ref([])
 const recipesLoading = ref(false)
-
-// 新用户状态
-const isNewUser = ref(false)
-const newUserAlertDismissed = ref(false)
 
 // 并行加载所有数据
 const loadAllData = async () => {
@@ -155,28 +129,8 @@ const loadAllData = async () => {
   ])
 }
 
-// 检查新用户状态
-const checkNewUser = async () => {
-  try {
-    const res = await checkIsNewUser()
-    if (res.code === 200) {
-      isNewUser.value = res.data === true
-    }
-  } catch (error) {
-    // 静默失败
-  }
-}
-
-// 跳转到智能测试页面
-const goToSmartTest = () => {
-  router.push('/patient/constitution/smart-test')
-}
-
 // 页面加载时执行
 onMounted(async () => {
-  // 检查新用户状态
-  await checkNewUser()
-  
   await loadAllData()
   
   // 加载患者端数据（不影响首屏）

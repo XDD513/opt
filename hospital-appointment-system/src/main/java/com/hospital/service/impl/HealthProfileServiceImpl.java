@@ -139,6 +139,36 @@ public class HealthProfileServiceImpl implements HealthProfileService {
         }
     }
 
+    @Override
+    public boolean isMandatoryHealthProfileComplete(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+        User user = userMapper.selectById(userId);
+        if (user == null) {
+            return false;
+        }
+        Integer gender = user.getGender();
+        if (gender == null || (gender != 1 && gender != 2)) {
+            return false;
+        }
+        if (user.getBirthDate() == null) {
+            return false;
+        }
+        UserHealthProfile p = healthProfileMapper.selectByUserId(userId);
+        if (p == null) {
+            return false;
+        }
+        if (p.getHeight() == null || p.getWeight() == null) {
+            return false;
+        }
+        if (!StringUtils.hasText(p.getBloodType())) {
+            return false;
+        }
+        String bt = p.getBloodType().trim();
+        return "A".equals(bt) || "B".equals(bt) || "AB".equals(bt) || "O".equals(bt);
+    }
+
     /**
      * 更新用户健康档案
      */

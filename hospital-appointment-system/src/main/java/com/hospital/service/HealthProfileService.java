@@ -26,6 +26,11 @@ public interface HealthProfileService {
     Result<Map<String, Object>> getHealthProfile(Long userId);
 
     /**
+     * 健康档案必填项是否已完整（性别、出生日期、身高、体重、血型）
+     */
+    boolean isMandatoryHealthProfileComplete(Long userId);
+
+    /**
      * 更新用户健康档案
      *
      * @param profile 健康档案信息

@@ -76,6 +76,9 @@
 import { ref, reactive, inject, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import message from '@/plugins/message'
+import notify from '@/plugins/notify'
+import { getHealthProfile } from '@/api/health'
+import { isHealthProfileMandatoryComplete } from '@/utils/healthProfileMandatory'
 import { User, Lock } from '@element-plus/icons-vue'
 import { login, getUserInfo, getCaptchaImage } from '@/api/user'
 import { useUserStore } from '@/stores/user'
@@ -195,18 +198,28 @@ const handleLogin = async () => {
 
         }
 
+        const roleType = res.data.roleType
+        if (roleType === 0) {
+          try {
+            const uid = userStore.userInfo?.id
+            if (uid) {
+              const hp = await getHealthProfile(uid)
+              if (hp.code === 200 && !isHealthProfileMandatoryComplete(hp.data)) {
+                notify.warning({ message: '请进行健康档案填写' })
+              }
+            }
+          } catch {
+            // ignore
+          }
+        }
+
         message.success('登录成功！')
 
-        // 根据角色跳转到对应首页（当前仅保留：管理员=1 / 患者=0）
-        const roleType = res.data.roleType
         let homePath = '/patient/home'
-
-        // roleType=1 为管理员
         if (roleType === 1) {
           homePath = '/admin/dashboard'
         }
 
-        // 立即跳转，不使用setTimeout
         router.push(homePath)
       }
     } catch (error) {

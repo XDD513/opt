@@ -6,7 +6,9 @@ import { useUserStore } from '@/stores/user'
 import { submitTest as submitTestApi, checkTestByAppointment, getTestReport } from '@/api/constitution'
 import { getRecipePromptStreamUrl } from '@/api/recipe'
 import { getDictionaryByType } from '@/api/system'
+import { getHealthProfile } from '@/api/health'
 import { checkIsNewUser, refreshToken as refreshTokenApi } from '@/api/user'
+import { isHealthProfileMandatoryComplete } from '@/utils/healthProfileMandatory'
 import { getErrorMessage, handleApiError } from '@/utils/errorHandler'
 import {
   getCurrentSeasonValueByMonth,
@@ -276,6 +278,19 @@ export function useConstitutionTest() {
       return false
     }
 
+    const userId = userStore.userInfo?.id
+    if (userId) {
+      try {
+        const hpRes = await getHealthProfile(userId)
+        if (hpRes.code === 200 && !isHealthProfileMandatoryComplete(hpRes.data)) {
+          notify.warning({ message: '请进行健康档案填写' })
+          return false
+        }
+      } catch {
+        // 由后端再次校验
+      }
+    }
+
     // 舌诊测试：必须有舌诊结果
     if (!state.tongueResult) {
       ElMessage.warning('请先完成舌诊分析')
@@ -346,12 +361,20 @@ export function useConstitutionTest() {
         return true
       } else {
         const errorMsg = getErrorMessage(res, { defaultMessage: '生成报告失败' })
-        ElMessage.error(errorMsg)
+        if (errorMsg === '请进行健康档案填写') {
+          notify.warning({ message: '请进行健康档案填写' })
+        } else {
+          ElMessage.error(errorMsg)
+        }
         return false
       }
     } catch (error) {
       const errorMsg = getErrorMessage(error, { defaultMessage: '生成报告异常' })
-      ElMessage.error(errorMsg)
+      if (errorMsg === '请进行健康档案填写') {
+        notify.warning({ message: '请进行健康档案填写' })
+      } else {
+        ElMessage.error(errorMsg)
+      }
       return false
     } finally {
       state.submitting = false

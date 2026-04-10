@@ -16,10 +16,6 @@
         </div>
       </template>
 
-      <el-alert type="info" :closable="false" show-icon class="mb12">
-        未读通知 <b>{{ unreadCount }}</b> 条，最近 30 条动态已展示
-      </el-alert>
-
       <el-form :inline="true" class="filter-form">
         <el-form-item label="通知类型">
           <el-select v-model="filters.type" clearable placeholder="全部类型" style="width: 180px">
