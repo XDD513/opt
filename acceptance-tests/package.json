@@ -1,0 +1,17 @@
+{
+  "name": "hospital-acceptance-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "毕业设计验收测试脚本：调用后端核心接口，生成论文用统计表与结果图",
+  "type": "module",
+  "scripts": {
+    "test": "node run.mjs",
+    "acceptance": "node run.mjs"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "axios": "^1.7.9"
+  }
+}

@@ -1,7 +1,0 @@
-frontend:
-  api-base-url: https://yggaame.cn/api
-  request-timeout: 10000
-  message-duration: 3000
-  default-avatars:
-    patient: https://api.dicebear.com/7.x/thumbs/svg?seed=patient
-    system: https://api.dicebear.com/7.x/shapes/svg?seed=assistant

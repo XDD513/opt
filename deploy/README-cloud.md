@@ -1,6 +1,7 @@
 # `yggaame.cn` 生产部署指南（Alibaba Cloud Linux）
 
 > 适用当前项目结构：  
+>
 > - 后端：`hospital-appointment-system`  
 > - 前端：`hospital-frontend`  
 > - AI 服务：`ai-service`（Python Flask）  
@@ -91,22 +92,20 @@ docker compose logs -f backend
 在 Nacos 中创建 `prod` 命名空间，然后导入以下 3 个配置：
 
 1. **后端配置**
-   - Group: `HOSPITAL_BACKEND`
-   - DataId: `hospital-appointment-system-prod.yaml`
-   - Type: `yaml`
-   - 内容来源：`/opt/hospital/deploy/nacos/hospital-appointment-system-prod.yaml`
-
+  - Group: `HOSPITAL_BACKEND`
+  - DataId: `hospital-appointment-system-prod.yaml`
+  - Type: `yaml`
+  - 内容来源：`/opt/hospital/deploy/nacos/hospital-appointment-system-prod.yaml`
 2. **前端运行时配置**
-   - Group: `HOSPITAL_FRONTEND`
-   - DataId: `hospital-frontend-prod.yaml`
-   - Type: `yaml`
-   - 内容来源：`/opt/hospital/deploy/nacos/hospital-frontend-prod.yaml`
-
+  - Group: `HOSPITAL_FRONTEND`
+  - DataId: `hospital-frontend-prod.yaml`
+  - Type: `yaml`
+  - 内容来源：`/opt/hospital/deploy/nacos/hospital-frontend-prod.yaml`
 3. **系统设置**
-   - Group: `HOSPITAL_BACKEND`
-   - DataId: `hospital-system-settings-prod.json`
-   - Type: `json`
-   - 内容来源：`/opt/hospital/deploy/nacos/hospital-system-settings-prod.json`
+  - Group: `HOSPITAL_BACKEND`
+  - DataId: `hospital-system-settings-prod.json`
+  - Type: `json`
+  - 内容来源：`/opt/hospital/deploy/nacos/hospital-system-settings-prod.json`
 
 ## 7. 初始化 MySQL
 
@@ -216,3 +215,4 @@ docker compose down
 6. 验证 HTTP
 7. 配置 HTTPS
 8. 最终验收
+

@@ -219,6 +219,11 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
             // 2. 计算各体质得分（纯舌诊 AI 评分模式）
             Map<String, Double> scores = new HashMap<>();
             List<com.hospital.entity.ConstitutionType> constitutionTypes = constitutionTypeMapper.selectAllOrdered();
+            if (constitutionTypes == null || constitutionTypes.isEmpty()) {
+                log.error("体质类型字典为空：表 tcm_constitution_type 无数据，无法计算体质得分");
+                return Result.error(ResultCode.SYSTEM_ERROR.getCode(),
+                        "体质类型字典未初始化，请在数据库表 tcm_constitution_type 中配置九种体质数据");
+            }
 
             // 解析舌象客观特征分 (Phase 3: 多模态融合 -> 纯 AI 驱动)
             // 映射关系：舌象特征 -> 影响的体质代码 -> 基础权重分数

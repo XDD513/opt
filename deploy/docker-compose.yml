@@ -1,22 +1,82 @@
 services:
+  mysql:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-tcm_health_system}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD:-redis}"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER:-guest}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD:-guest}
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    restart: unless-stopped
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.24
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "true"
+      ELASTIC_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
+      ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    restart: unless-stopped
+    
   nacos:
     image: nacos/nacos-server:v2.2.3
     environment:
-      MODE: standalone
+      MODE: "standalone"
+      SPRING_DATASOURCE_PLATFORM: "mysql"
+
+      MYSQL_SERVICE_HOST: "mysql"
+      MYSQL_SERVICE_PORT: "3306"
+      MYSQL_SERVICE_DB_NAME: "nacos_config"
+      MYSQL_SERVICE_USER: "root"
+      MYSQL_SERVICE_PASSWORD: "${MYSQL_ROOT_PASSWORD:-root}"
+      MYSQL_SERVICE_DB_PARAM: "characterEncoding=utf8&connectTimeout=1000&socketTimeout=3000&autoReconnect=true&useSSL=false&serverTimezone=Asia/Shanghai"
+
       NACOS_AUTH_ENABLE: "true"
-      NACOS_AUTH_TOKEN: ${NACOS_AUTH_TOKEN:-change-me-token}
-      NACOS_AUTH_IDENTITY_KEY: ${NACOS_AUTH_IDENTITY_KEY:-serverIdentity}
-      NACOS_AUTH_IDENTITY_VALUE: ${NACOS_AUTH_IDENTITY_VALUE:-security}
-      JVM_XMS: 256m
-      JVM_XMX: 256m
-      JVM_XMN: 128m
+      NACOS_AUTH_TOKEN: "${NACOS_AUTH_TOKEN}"
+      NACOS_AUTH_IDENTITY_KEY: "${NACOS_AUTH_IDENTITY_KEY:-serverIdentity}"
+      NACOS_AUTH_IDENTITY_VALUE: "${NACOS_AUTH_IDENTITY_VALUE:-security}"
+
+      JVM_XMS: "256m"
+      JVM_XMX: "256m"
+      JVM_XMN: "128m"
+    depends_on:
+      - mysql
     ports:
       - "8848:8848"
     restart: unless-stopped
 
   ai-service:
     build:
-      context: ../../新建文件夹/ai-service
+      context: ../ai-service
     ports:
       - "5000:5000"
     restart: unless-stopped
@@ -27,7 +87,10 @@ services:
     environment:
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       NACOS_SERVER_ADDR: ${NACOS_SERVER_ADDR:-nacos:8848}
-      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-prod}
+      NACOS_NAMESPACE: ${NACOS_NAMESPACE:-44840347-f66a-40d9-9bf8-55876f9fd585}
+      HOSPITAL_AI_BASE_URL: ${HOSPITAL_AI_BASE_URL:-http://ai-service:5000}
+      SPRING_CLOUD_NACOS_USERNAME: nacos
+      SPRING_CLOUD_NACOS_PASSWORD: nacos
     depends_on:
       - ai-service
       - nacos
@@ -45,3 +108,9 @@ services:
     ports:
       - "80:80"
     restart: unless-stopped
+
+volumes:
+  mysql_data:
+  redis_data:
+  rabbitmq_data:
+  es_data:

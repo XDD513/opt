@@ -1,0 +1,12 @@
+.git
+.idea
+.vscode
+.cursor
+.vercel
+.augment
+**/node_modules
+**/dist
+**/target
+**/.DS_Store
+**/*.log
+deploy
