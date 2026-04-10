@@ -37,7 +37,6 @@
                   @click="refreshCaptcha"
                 />
               </div>
-              <el-link type="primary" :underline="false" class="captcha-refresh" @click="refreshCaptcha">换一张</el-link>
             </el-form-item>
 
           <el-form-item>
@@ -76,7 +75,6 @@
 import { ref, reactive, inject, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import message from '@/plugins/message'
-import notify from '@/plugins/notify'
 import { getHealthProfile } from '@/api/health'
 import { isHealthProfileMandatoryComplete } from '@/utils/healthProfileMandatory'
 import { User, Lock } from '@element-plus/icons-vue'
@@ -205,7 +203,7 @@ const handleLogin = async () => {
             if (uid) {
               const hp = await getHealthProfile(uid)
               if (hp.code === 200 && !isHealthProfileMandatoryComplete(hp.data)) {
-                notify.warning({ message: '请进行健康档案填写' })
+                message.warning('请进行健康档案填写')
               }
             }
           } catch {
@@ -386,9 +384,5 @@ const goToRegister = () => {
   border-radius: 6px;
   cursor: pointer;
   border: 1px solid #e5e7eb;
-}
-.captcha-refresh {
-  margin-top: 6px;
-  font-size: 13px;
 }
 </style>
