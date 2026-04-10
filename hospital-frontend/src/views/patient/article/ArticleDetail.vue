@@ -43,8 +43,14 @@
       <el-button class="mt8" type="primary" :disabled="!canInteract" @click="submitComment">发表评论</el-button>
       <el-empty v-if="comments.length === 0" description="暂无评论" />
       <div v-for="item in comments" :key="item.id" class="comment-item">
-        <div>{{ item.userName || item.userId }}</div>
-        <div class="comment-content">{{ item.content }}</div>
+        <el-avatar class="comment-avatar" :size="44" :src="commentAvatar(item)">
+          {{ userInitial(commentDisplayName(item)) }}
+        </el-avatar>
+        <div class="comment-main">
+          <div class="comment-name">{{ commentDisplayName(item) }}</div>
+          <div class="comment-content">{{ item.content }}</div>
+          <div class="comment-time">{{ formatCommentTime(item.createTime || item.createdAt || item.createAt || item.time) }}</div>
+        </div>
       </div>
     </el-card>
   </div>
@@ -56,6 +62,7 @@ import { useRoute } from 'vue-router'
 import message from '@/plugins/message'
 import { favoriteArticle, getArticleDetail, getArticleStatus, likeArticle, unfavoriteArticle, unlikeArticle } from '@/api/article'
 import { getCommentList, publishComment } from '@/api/comment'
+import { getUserInfo } from '@/api/user'
 const route = useRoute()
 const id = route.params.id
 const loading = ref(false)
@@ -63,14 +70,21 @@ const article = ref({})
 const status = ref({ liked: false, favorited: false })
 const comments = ref([])
 const commentText = ref('')
+const currentUser = ref(null)
 const canInteract = computed(() => Number(article.value?.status) === 1)
 const loadDetail = async () => {
   loading.value = true
   try {
-    const [detailRes, statusRes, commentRes] = await Promise.all([getArticleDetail(id), getArticleStatus(id), getCommentList({ articleId: id, pageNum: 1, pageSize: 50 })])
+    const [detailRes, statusRes, commentRes, userRes] = await Promise.all([
+      getArticleDetail(id),
+      getArticleStatus(id),
+      getCommentList({ articleId: id, pageNum: 1, pageSize: 50 }),
+      getUserInfo().catch(() => null)
+    ])
     article.value = detailRes.data || {}
     status.value = statusRes.data || { liked: false, favorited: false }
     comments.value = commentRes.data?.records || []
+    currentUser.value = userRes?.data || null
   } finally { loading.value = false }
 }
 const toggleLike = async () => {
@@ -101,6 +115,39 @@ const submitComment = async () => {
   message.success('评论成功，感谢你的参与')
   await loadDetail()
 }
+
+const userInitial = (nameOrId) => {
+  const s = String(nameOrId || '').trim()
+  if (!s) return '?'
+  return s.slice(0, 1)
+}
+
+const commentDisplayName = (item) => {
+  const name = (item && (item.userName || item.realName || item.username)) || ''
+  if (String(name).trim()) return String(name).trim()
+  const uid = item?.userId
+  const me = currentUser.value
+  if (uid && me && String(uid) === String(me.id)) return me.realName || me.username || String(uid)
+  return uid ? String(uid) : '匿名'
+}
+
+const commentAvatar = (item) => {
+  const url = item?.userAvatar || item?.avatarUrl || item?.avatar || ''
+  if (String(url).trim()) return String(url).trim()
+  const uid = item?.userId
+  const me = currentUser.value
+  if (uid && me && String(uid) === String(me.id)) return me.avatar || ''
+  return ''
+}
+
+const formatCommentTime = (raw) => {
+  if (!raw) return ''
+  const d = raw instanceof Date ? raw : new Date(raw)
+  if (Number.isNaN(d.getTime())) return ''
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${hh}:${mm}`
+}
 onMounted(loadDetail)
 </script>
 
@@ -114,5 +161,35 @@ onMounted(loadDetail)
 .content { white-space: pre-wrap; line-height: 1.8; }
 .mt12 { margin-top: 12px; }
 .mt8 { margin-top: 8px; }
-.comment-item { border-top: 1px solid #f0f0f0; padding: 10px 0; }
+.comment-item {
+  border-top: 1px solid #f0f0f0;
+  padding: 14px 0;
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.comment-avatar {
+  flex: 0 0 auto;
+}
+.comment-main {
+  flex: 1;
+  min-width: 0;
+}
+.comment-name {
+  font-weight: 600;
+  color: #303133;
+  line-height: 1.2;
+}
+.comment-content {
+  margin-top: 6px;
+  color: #606266;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.comment-time {
+  margin-top: 6px;
+  font-size: 12px;
+  color: #909399;
+}
 </style>

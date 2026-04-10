@@ -4,6 +4,10 @@ docs/nacos/*-prod.yaml
 !docs/nacos/*-example.yaml
 !docs/nacos/*-template.yaml
 
+deploy/.env
+deploy/env-example
+deploy/docker-compose.yaml
+
 # 日志文件
 *.log
 logs/
