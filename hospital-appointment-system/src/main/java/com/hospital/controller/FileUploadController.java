@@ -113,5 +113,36 @@ public class FileUploadController {
             return Result.error(500, "上传失败: " + e.getMessage());
         }
     }
+
+    @OperationLog(module = "FILE", type = "INSERT", description = "上传文章封面")
+    @PostMapping("/article-cover")
+    public Result<String> uploadArticleCover(@RequestParam("file") MultipartFile file) {
+        try {
+            if (file == null || file.isEmpty()) {
+                return Result.error(400, "文件不能为空");
+            }
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null) {
+                return Result.error(400, "文件名不能为空");
+            }
+            String extension = "";
+            int lastDotIndex = originalFilename.lastIndexOf(".");
+            if (lastDotIndex > 0) {
+                extension = originalFilename.substring(lastDotIndex).toLowerCase();
+            }
+            if (!extension.matches("\\.(jpg|jpeg|png|gif|bmp|webp)")) {
+                return Result.error(400, "只支持图片格式：jpg、jpeg、png、gif、bmp、webp");
+            }
+            if (file.getSize() > 5 * 1024 * 1024) {
+                return Result.error(400, "文件大小不能超过5MB");
+            }
+            String fileUrl = ossService.uploadFile(file, "article-cover/");
+            log.info("文章封面上传成功: url={}", fileUrl);
+            return Result.success("上传成功", fileUrl);
+        } catch (Exception e) {
+            log.error("文章封面上传失败: {}", e.getMessage(), e);
+            return Result.error(500, "上传失败: " + e.getMessage());
+        }
+    }
 }
 

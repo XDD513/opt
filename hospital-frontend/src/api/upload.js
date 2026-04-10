@@ -32,3 +32,16 @@ export function uploadIcon(file) {
   })
 }
 
+export function uploadArticleCover(file) {
+  const formData = new FormData()
+  formData.append('file', file)
+  return request({
+    url: '/upload/article-cover',
+    method: 'post',
+    data: formData,
+    headers: {
+      'Content-Type': 'multipart/form-data'
+    }
+  })
+}
+

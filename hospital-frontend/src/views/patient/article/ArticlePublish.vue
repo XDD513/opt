@@ -10,7 +10,7 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="标题"><el-input v-model="form.title" maxlength="200" show-word-limit /></el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="form.category" style="width: 220px">
+          <el-select v-model="form.category" class="category-select">
             <el-option label="体质养生" value="CONSTITUTION" />
             <el-option label="饮食养生" value="DIET" />
             <el-option label="运动养生" value="EXERCISE" />
@@ -20,7 +20,33 @@
           </el-select>
         </el-form-item>
         <el-form-item label="封面">
-          <el-input v-model="form.coverImage" placeholder="可填写图片URL（可选）" />
+          <div class="cover-upload-wrap">
+            <el-upload
+              v-if="!form.coverImage"
+              class="cover-upload"
+              drag
+              action="#"
+              :show-file-list="false"
+              :http-request="coverUpload"
+              :before-upload="beforeCoverUpload"
+            >
+              <el-icon class="el-icon--upload"><UploadFilled /></el-icon>
+              <div class="el-upload__text">
+                拖拽图片到此处或 <em>点击上传</em>
+              </div>
+              <template #tip>
+                <div class="el-upload__tip">
+                  支持 jpg/png 文件，大小不超过 5MB。
+                </div>
+              </template>
+            </el-upload>
+            <div v-else class="cover-preview">
+              <el-image :src="form.coverImage" fit="contain" class="cover-preview-img" :preview-src-list="[form.coverImage]" preview-teleported />
+              <div class="cover-preview-actions">
+                <el-button type="primary" link @click="form.coverImage = ''">重新上传</el-button>
+              </div>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="摘要"><el-input v-model="form.summary" type="textarea" :rows="3" maxlength="500" show-word-limit /></el-form-item>
         <el-form-item label="正文"><el-input v-model="form.content" type="textarea" :rows="12" /></el-form-item>
@@ -36,9 +62,11 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { UploadFilled } from '@element-plus/icons-vue'
 import message from '@/plugins/message'
 import { useRoute, useRouter } from 'vue-router'
 import { getArticleDetail, publishArticle, updateArticle } from '@/api/article'
+import { uploadArticleCover } from '@/api/upload'
 const router = useRouter()
 const route = useRoute()
 const submitting = ref(false)
@@ -59,6 +87,33 @@ const rules = {
 
 const id = computed(() => route.params.id)
 const isEdit = computed(() => !!id.value)
+
+const beforeCoverUpload = (raw) => {
+  const name = (raw && raw.name) || ''
+  const okType = raw.type === 'image/jpeg' || raw.type === 'image/png' || /\.(jpe?g|png)$/i.test(name)
+  if (!okType) {
+    message.error('只支持 jpg、png 图片')
+    return false
+  }
+  if (raw.size > 5 * 1024 * 1024) {
+    message.error('文件大小不能超过 5MB')
+    return false
+  }
+  return true
+}
+
+const coverUpload = async (options) => {
+  const file = options.file
+  try {
+    const res = await uploadArticleCover(file)
+    if (res.code === 200 && res.data) {
+      form.coverImage = res.data
+      message.success('上传成功')
+    }
+  } catch (e) {
+    message.error((e && e.message) || '上传失败')
+  }
+}
 
 const loadForEdit = async () => {
   if (!isEdit.value) return
@@ -96,4 +151,63 @@ onMounted(loadForEdit)
 .section-card { border-radius: 12px; }
 .page-title { font-size: 20px; font-weight: 600; }
 .page-subtitle { color: #909399; margin-top: 4px; }
+.category-select { width: 100%; max-width: 280px; }
+
+.cover-upload-wrap {
+  width: 100%;
+  max-width: 420px;
+}
+
+.cover-upload :deep(.el-upload) {
+  width: 100%;
+}
+
+.cover-upload :deep(.el-upload-dragger) {
+  width: 100%;
+  padding: 28px 16px;
+  border-radius: 12px;
+  border-color: #dcdfe6;
+}
+
+.cover-upload :deep(.el-icon--upload) {
+  font-size: 48px;
+  color: #409eff;
+  margin-bottom: 12px;
+}
+
+.cover-upload :deep(.el-upload__text) {
+  color: #606266;
+  font-size: 14px;
+}
+
+.cover-upload :deep(.el-upload__text em) {
+  color: #409eff;
+  font-style: normal;
+}
+
+.cover-upload :deep(.el-upload__tip) {
+  margin-top: 10px;
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.5;
+}
+
+.cover-preview {
+  border: 1px dashed #dcdfe6;
+  border-radius: 12px;
+  padding: 12px;
+  background: #fafafa;
+}
+
+.cover-preview-img {
+  display: block;
+  max-height: 200px;
+  width: 100%;
+  border-radius: 8px;
+}
+
+.cover-preview-actions {
+  margin-top: 10px;
+  text-align: center;
+}
 </style>
