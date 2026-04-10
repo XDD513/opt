@@ -44,7 +44,15 @@
               </template>
             </el-upload>
             <div v-else class="cover-preview">
-              <el-image :src="coverPreviewUrl" fit="contain" class="cover-preview-img" :preview-src-list="coverPreviewUrl ? [coverPreviewUrl] : []" preview-teleported />
+              <div class="cover-preview-frame">
+                <el-image
+                  :src="coverPreviewUrl"
+                  fit="contain"
+                  class="cover-preview-img"
+                  :preview-src-list="coverPreviewUrl ? [coverPreviewUrl] : []"
+                  preview-teleported
+                />
+              </div>
               <div class="cover-preview-actions">
                 <el-button type="primary" link @click="form.coverImage = ''">重新上传</el-button>
               </div>
@@ -190,7 +198,7 @@ onMounted(loadForEdit)
 
 .cover-upload-wrap {
   width: 100%;
-  max-width: 420px;
+  max-width: 320px;
 }
 
 .cover-upload :deep(.el-upload) {
@@ -228,21 +236,43 @@ onMounted(loadForEdit)
 }
 
 .cover-preview {
-  border: 1px dashed #dcdfe6;
-  border-radius: 12px;
-  padding: 12px;
-  background: #fafafa;
+  padding: 0;
+  background: transparent;
+  text-align: center;
+}
+
+/* 不固定外框高度，按图片等比例缩放，仅用 max 限制尺寸 */
+.cover-preview-frame {
+  display: inline-flex;
+  max-width: 520px;
+  line-height: 0;
+  vertical-align: top;
 }
 
 .cover-preview-img {
   display: block;
-  max-height: 200px;
-  width: 100%;
-  border-radius: 8px;
+  max-width: 500px;
+  max-height: 320px;
+}
+
+.cover-preview-img :deep(.el-image__wrapper) {
+  width: auto !important;
+  max-width: 500px !important;
+  height: auto !important;
+  max-height: 320px !important;
+}
+
+.cover-preview-img :deep(.el-image__inner) {
+  max-width: 500px !important;
+  max-height: 320px !important;
+  width: auto !important;
+  height: auto !important;
+  object-fit: contain !important;
+  vertical-align: middle;
 }
 
 .cover-preview-actions {
-  margin-top: 10px;
+  margin-top: 6px;
   text-align: center;
 }
 </style>
