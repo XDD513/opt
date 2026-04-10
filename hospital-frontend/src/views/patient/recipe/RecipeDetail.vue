@@ -117,11 +117,13 @@
         <template #header>
           <span>食材清单</span>
         </template>
+        <div class="table-responsive">
         <el-table :data="ingredients" border>
           <el-table-column prop="name" label="食材名称" width="200" />
           <el-table-column prop="amount" label="用量" width="150" />
           <el-table-column prop="note" label="备注" />
         </el-table>
+        </div>
       </el-card>
 
       <!-- 制作步骤 -->

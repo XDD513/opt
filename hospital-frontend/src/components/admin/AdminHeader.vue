@@ -178,13 +178,15 @@ onUnmounted(() => {
 
 <style scoped lang="scss">
 .admin-header {
-  height: 50px;
+  min-height: 50px;
   background: #009688;
   color: white;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  flex-wrap: wrap;
+  row-gap: 8px;
+  padding: 8px 16px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
   flex-shrink: 0;
 
@@ -192,6 +194,8 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 16px;
+    min-width: 0;
+    flex: 1 1 auto;
 
     .menu-toggle {
       cursor: pointer;
@@ -208,6 +212,8 @@ onUnmounted(() => {
       display: flex;
       align-items: center;
       font-size: 14px;
+      flex-wrap: wrap;
+      min-width: 0;
 
       .breadcrumb-item {
         opacity: 0.8;
@@ -230,6 +236,8 @@ onUnmounted(() => {
     align-items: center;
     gap: 18px;
     font-size: 14px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
 
     .notification-wrapper {
       position: relative;

@@ -33,6 +33,7 @@
         </el-form-item>
         <el-form-item><el-button type="primary" @click="fetchList">查询</el-button></el-form-item>
       </el-form>
+      <div class="table-responsive">
       <el-table :data="list" v-loading="loading" border>
         <el-table-column prop="title" label="标题" min-width="260" />
         <el-table-column prop="authorName" label="作者" width="120" />
@@ -55,6 +56,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
       <el-empty v-if="!loading && list.length === 0" description="暂无符合条件的文章" />
     </el-card>
   </div>

@@ -73,6 +73,7 @@
           </el-button>
         </div>
       </template>
+      <div class="table-responsive">
       <el-table :data="comparisonRows" border>
         <el-table-column prop="label" label="配置项" width="160" />
         <el-table-column label="运行时配置">
@@ -89,6 +90,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
     </el-card>
 
     <el-card shadow="never" class="mt16">

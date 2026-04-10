@@ -47,6 +47,7 @@
         </div>
 
         <!-- 用户列表 -->
+        <div class="table-responsive">
         <el-table :data="users" v-loading="loading" class="admin-table" stripe empty-text="暂无数据">
           <el-table-column type="index" label="序号" width="70" align="center" fixed="left"/>
           
@@ -152,6 +153,7 @@
             </template>
           </el-table-column>
         </el-table>
+        </div>
 
         <!-- 分页 -->
         <div class="admin-pagination" v-if="total > 0">

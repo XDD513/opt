@@ -215,9 +215,18 @@ watch(() => route.path, (newPath) => {
 
   .main-content {
     flex: 1;
+    overflow-x: hidden;
     overflow-y: auto;
     padding: 16px;
     background: #f0f2f5;
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 991px) {
+  .admin-layout .main-content {
+    padding: 12px;
   }
 }
 </style>

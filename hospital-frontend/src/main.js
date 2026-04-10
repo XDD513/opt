@@ -11,6 +11,7 @@ import router from './router'
 // 全局补丁 & 自定义样式
 import './utils/passiveEventPatch'
 import './styles/admin-common.scss'
+import './styles/responsive-global.scss'
 import './styles/patient.scss'
 import './styles/message.scss'
 

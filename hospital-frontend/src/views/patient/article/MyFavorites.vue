@@ -7,6 +7,7 @@
           <div class="page-subtitle">快速回看你标记过的重要内容</div>
         </div>
       </template>
+      <div class="table-responsive">
       <el-table :data="list" v-loading="loading" border class="table-wrap">
         <el-table-column prop="title" label="标题" min-width="260">
           <template #default="{ row }">
@@ -18,6 +19,7 @@
         <el-table-column prop="likeCount" label="点赞" width="90" />
         <el-table-column prop="favoriteCount" label="收藏数" width="100" />
       </el-table>
+      </div>
       <el-empty v-if="!loading && list.length === 0" description="暂无收藏文章">
         <el-button type="primary" @click="$router.push('/patient/article/list')">去逛逛</el-button>
       </el-empty>

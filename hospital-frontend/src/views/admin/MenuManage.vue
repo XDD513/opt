@@ -24,6 +24,7 @@
         </div>
       </div>
       <div class="card-body">
+        <div class="table-responsive">
         <el-table :data="menus" v-loading="loading" class="admin-table" stripe row-key="id" :tree-props="{ children: 'children' }" empty-text="暂无数据">
           <el-table-column type="index" label="序号" width="70" align="center" />
           <el-table-column prop="name" label="菜单名称" min-width="150" align="center" />
@@ -44,6 +45,7 @@
             </template>
           </el-table-column>
         </el-table>
+        </div>
       </div>
     </div>
   </div>

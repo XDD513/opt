@@ -378,4 +378,14 @@ const goToLogin = () => {
     color: #666;
   }
 }
+
+@media (max-width: 768px) {
+  .register-box {
+    width: 100%;
+    max-width: 100%;
+  }
+  .register-form-wrapper {
+    padding: 24px 16px;
+  }
+}
 </style>

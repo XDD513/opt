@@ -222,6 +222,7 @@
         <el-tab-pane label="难度等级" name="difficulty" />
       </el-tabs>
 
+      <div class="table-responsive">
       <el-table :data="dictionaries" v-loading="dictLoading" stripe border>
         <el-table-column type="index" label="序号" width="70" align="center" />
         <el-table-column prop="dictCode" label="字典编码" min-width="180" show-overflow-tooltip />
@@ -259,6 +260,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
 
       <!-- 分页 -->
       <div class="pagination" v-if="dictTotal > 0">

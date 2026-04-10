@@ -333,15 +333,20 @@ const formatDateTime = (value) => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 20px;
+  flex-wrap: wrap;
+  row-gap: 8px;
+  padding: 8px 20px;
   background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
   color: white;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  min-width: 0;
 
   .header-left {
     display: flex;
     align-items: center;
     gap: 12px;
+    min-width: 0;
+    flex: 1 1 auto;
 
     .menu-toggle {
       display: inline-flex;
@@ -364,6 +369,10 @@ const formatDateTime = (value) => {
     .logo-text {
       font-size: 20px;
       font-weight: bold;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 
@@ -371,6 +380,8 @@ const formatDateTime = (value) => {
     display: flex;
     align-items: center;
     gap: 18px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
 
     .notification-wrapper {
       position: relative;
@@ -412,6 +423,10 @@ const formatDateTime = (value) => {
 
     .username {
       font-size: 14px;
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .avatar-dropdown {
@@ -576,16 +591,20 @@ const formatDateTime = (value) => {
 
 @media (max-width: 991px) {
   .header {
-    padding: 0 12px;
+    padding: 8px 12px;
   }
 
   .header-right {
     gap: 10px;
 
-    .notification-wrapper,
     .username {
-      display: none;
+      max-width: 100px;
     }
+  }
+
+  .header-left .logo-text {
+    font-size: 15px;
+    max-width: min(52vw, 220px);
   }
 
   .content {

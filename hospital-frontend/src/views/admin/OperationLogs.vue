@@ -61,6 +61,7 @@
         </el-form>
 
         <!-- 日志列表：100% 宽度 + URL 列 min-width 铺满剩余空间，避免右侧大块留白 -->
+        <div class="table-responsive">
         <el-table :data="logs" v-loading="loading" class="admin-table" stripe empty-text="暂无数据" style="width: 100%">
           <el-table-column type="index" label="序号" width="70"
             :index="(index) => (queryParams.page - 1) * queryParams.pageSize + index + 1" />
@@ -101,6 +102,7 @@
             </template>
           </el-table-column>
         </el-table>
+        </div>
 
         <!-- 分页 -->
         <div class="admin-pagination" v-if="total > 0">

@@ -16,6 +16,7 @@
         <el-tag type="danger">已驳回 {{ rejectedCount }}</el-tag>
         <el-tag type="info">已下架 {{ offlineCount }}</el-tag>
       </div>
+      <div class="table-responsive">
       <el-table :data="list" v-loading="loading" border>
         <el-table-column prop="title" label="标题" min-width="220" />
         <el-table-column prop="viewCount" label="浏览" width="80" />
@@ -38,6 +39,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
       <el-empty v-if="!loading && list.length === 0" description="你还没有发布文章">
         <el-button type="primary" @click="$router.push('/patient/article/publish')">立即发布</el-button>
       </el-empty>

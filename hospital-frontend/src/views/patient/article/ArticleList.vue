@@ -49,7 +49,8 @@
           </el-radio-group>
         </el-form-item>
       </el-form>
-      <el-table v-if="viewMode === 'table'" :data="list" v-loading="loading" border>
+      <div v-if="viewMode === 'table'" class="table-responsive">
+      <el-table :data="list" v-loading="loading" border>
         <el-table-column prop="title" label="标题" min-width="220">
           <template #default="{ row }">
             <el-link type="primary" @click="$router.push(`/patient/article/detail/${row.id}`)">{{ row.title }}</el-link>
@@ -62,6 +63,7 @@
         <el-table-column prop="likeCount" label="点赞" width="80" />
         <el-table-column prop="viewCount" label="浏览" width="80" />
       </el-table>
+      </div>
       <div v-else class="card-grid" v-loading="loading">
         <el-card v-for="row in list" :key="row.id" shadow="hover" class="article-card">
           <div class="card-title-row">
@@ -132,10 +134,10 @@ onMounted(fetchList)
 <style scoped>
 .article-page { max-width: 1200px; margin: 0 auto; }
 .hero-card { border-radius: 12px; }
-.header-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.header-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap; }
 .page-title { font-size: 20px; font-weight: 600; }
 .page-subtitle { margin-top: 4px; color: #909399; font-size: 13px; }
-.header-actions { display: flex; gap: 8px; }
+.header-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
 .stat-item { border-radius: 10px; background: #fafafa; }
 .stat-label { color: #909399; font-size: 13px; }
@@ -148,4 +150,10 @@ onMounted(fetchList)
 .card-meta { margin-top: 10px; display: flex; gap: 10px; color: #909399; font-size: 12px; }
 .pager { margin-top: 16px; display: flex; justify-content: flex-end; }
 .ml8 { margin-left: 8px; }
+@media (max-width: 768px) {
+  .stat-grid { grid-template-columns: 1fr; }
+  .card-grid { grid-template-columns: 1fr; }
+  .query-form :deep(.el-form-item) { margin-right: 0; width: 100%; }
+  .query-form :deep(.el-input), .query-form :deep(.el-select) { width: 100% !important; max-width: 100%; }
+}
 </style>

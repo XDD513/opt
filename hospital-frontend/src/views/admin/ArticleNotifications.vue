@@ -44,6 +44,7 @@
         </el-form-item>
       </el-form>
 
+      <div class="table-responsive">
       <el-table :data="filteredEvents" border>
         <el-table-column label="选择" width="70">
           <template #default="{ row }">
@@ -65,6 +66,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
       <el-empty v-if="!loading && events.length === 0" description="暂无通知事件" />
     </el-card>
   </div>

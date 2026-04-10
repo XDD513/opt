@@ -10,6 +10,7 @@
           <el-button @click="fetchList">刷新</el-button>
         </div>
       </template>
+      <div class="table-responsive">
       <el-table :data="list" v-loading="loading" border>
         <el-table-column prop="title" label="标题" min-width="260" />
         <el-table-column prop="authorName" label="作者" width="120" />
@@ -23,6 +24,7 @@
           </template>
         </el-table-column>
       </el-table>
+      </div>
       <el-empty v-if="!loading && list.length === 0" description="暂无待审核文章" />
     </el-card>
   </div>
