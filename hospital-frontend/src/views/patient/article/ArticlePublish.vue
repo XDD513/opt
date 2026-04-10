@@ -9,14 +9,17 @@
       </template>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="90px">
         <el-form-item label="标题"><el-input v-model="form.title" maxlength="200" show-word-limit /></el-form-item>
-        <el-form-item label="分类">
-          <el-select v-model="form.category" class="category-select">
-            <el-option label="体质养生" value="CONSTITUTION" />
-            <el-option label="饮食养生" value="DIET" />
-            <el-option label="运动养生" value="EXERCISE" />
-            <el-option label="穴位养生" value="ACUPOINT" />
-            <el-option label="时令养生" value="SEASON" />
-            <el-option label="其他" value="OTHER" />
+        <el-form-item label="分类" prop="category">
+          <el-select
+            v-model="form.category"
+            class="category-select"
+            filterable
+            allow-create
+            default-first-option
+            clearable
+            placeholder="选择常用分类"
+          >
+            <el-option v-for="opt in ARTICLE_CATEGORY_OPTIONS" :key="opt.value" :label="opt.label" :value="opt.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="封面">
@@ -66,6 +69,7 @@ import { UploadFilled } from '@element-plus/icons-vue'
 import message from '@/plugins/message'
 import { useRoute, useRouter } from 'vue-router'
 import { getArticleDetail, publishArticle, updateArticle } from '@/api/article'
+import { ARTICLE_CATEGORY_OPTIONS } from '@/utils/articleCategory'
 import { uploadArticleCover } from '@/api/upload'
 const router = useRouter()
 const route = useRoute()
@@ -73,7 +77,7 @@ const submitting = ref(false)
 const formRef = ref()
 const form = reactive({
   title: '',
-  category: 'CONSTITUTION',
+  category: '',
   coverImage: '',
   summary: '',
   content: '',
@@ -82,6 +86,17 @@ const form = reactive({
 
 const rules = {
   title: [{ required: true, message: '请填写标题', trigger: 'blur' }],
+  category: [
+    {
+      validator: (_, val, cb) => {
+        const s = (val == null ? '' : String(val)).trim()
+        if (!s) cb(new Error('请选择或输入分类'))
+        else if (s.length > 64) cb(new Error('分类不超过64个字符'))
+        else cb()
+      },
+      trigger: 'change'
+    }
+  ],
   content: [{ required: true, message: '请填写正文', trigger: 'blur' }]
 }
 
@@ -120,7 +135,7 @@ const loadForEdit = async () => {
   const res = await getArticleDetail(id.value)
   const data = res.data || {}
   form.title = data.title || ''
-  form.category = data.category || 'CONSTITUTION'
+  form.category = data.category || ''
   form.coverImage = data.coverImage || ''
   form.summary = data.summary || ''
   form.content = data.content || ''
@@ -130,6 +145,7 @@ const loadForEdit = async () => {
 const submit = async () => {
   const ok = await formRef.value?.validate?.().catch(() => false)
   if (ok === false) return
+  form.category = String(form.category || '').trim()
   submitting.value = true
   try {
     if (isEdit.value) {
@@ -151,7 +167,7 @@ onMounted(loadForEdit)
 .section-card { border-radius: 12px; }
 .page-title { font-size: 20px; font-weight: 600; }
 .page-subtitle { color: #909399; margin-top: 4px; }
-.category-select { width: 100%; max-width: 280px; }
+.category-select { width: 100%; max-width: 420px; }
 
 .cover-upload-wrap {
   width: 100%;
