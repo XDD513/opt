@@ -8,7 +8,7 @@
  */
 
 import message from '@/plugins/message'
-import { generatePresignedUrl } from '@/api/oss'
+import { resolveOssPreviewUrl, sanitizeStoredMediaUrl } from '@/utils/ossPreview'
 
 /**
  * 图标上传组合式函数
@@ -53,28 +53,9 @@ export function useIconUpload(iconPreview, editForm) {
     }
 
     if (result && result.code === 200 && result.data) {
-      const iconUrl = result.data
+      const iconUrl = sanitizeStoredMediaUrl(result.data)
+      iconPreview.value = await resolveOssPreviewUrl(iconUrl, 60)
 
-      // 如果是OSS URL，生成签名URL用于预览
-      try {
-        const signedUrlResponse = await generatePresignedUrl(iconUrl, 60)
-        
-        // 签名URL可能在data字段或message字段中
-        let signedUrl = null
-        if (signedUrlResponse && signedUrlResponse.code === 200) {
-          signedUrl = signedUrlResponse.data || signedUrlResponse.message
-        }
-        
-        if (signedUrl && signedUrl.startsWith('http')) {
-          iconPreview.value = signedUrl
-        } else {
-          iconPreview.value = iconUrl
-        }
-      } catch (e) {
-        iconPreview.value = iconUrl
-      }
-      
-      // 保存原始URL到表单
       if (editForm && typeof editForm === 'object') {
         if (editForm.value) {
           editForm.value.icon = iconUrl

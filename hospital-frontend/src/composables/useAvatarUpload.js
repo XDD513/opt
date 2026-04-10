@@ -8,7 +8,7 @@
  */
 
 import message from '@/plugins/message'
-import { generatePresignedUrl } from '@/api/oss'
+import { resolveOssPreviewUrl, sanitizeStoredMediaUrl } from '@/utils/ossPreview'
 
 /**
  * 头像上传组合式函数
@@ -53,28 +53,10 @@ export function useAvatarUpload(avatarPreview, editForm) {
     }
 
     if (result && result.code === 200 && result.data) {
-      const avatarUrl = result.data
+      const avatarUrl = sanitizeStoredMediaUrl(result.data)
+      avatarPreview.value = await resolveOssPreviewUrl(avatarUrl, 60)
 
-      // 如果是OSS URL，生成签名URL用于预览
-      try {
-        const signedUrlResponse = await generatePresignedUrl(avatarUrl, 60)
-        
-        // 签名URL可能在data字段或message字段中
-        let signedUrl = null
-        if (signedUrlResponse && signedUrlResponse.code === 200) {
-          signedUrl = signedUrlResponse.data || signedUrlResponse.message
-        }
-        
-        if (signedUrl && signedUrl.startsWith('http')) {
-          avatarPreview.value = signedUrl
-        } else {
-          avatarPreview.value = avatarUrl
-        }
-      } catch (e) {
-        avatarPreview.value = avatarUrl
-      }
-      
-      // 保存原始URL到表单
+      // 保存去掉签名参数的持久化 URL
       if (editForm && typeof editForm === 'object') {
         if (editForm.value) {
           editForm.value.avatar = avatarUrl

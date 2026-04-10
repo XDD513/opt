@@ -139,8 +139,8 @@ import { useUserStore } from '@/stores/user'
 
 import dayjs from 'dayjs'
 import { updateUserInfo, getUserInfo, changePassword, getUserSettings, updateUserSettings } from '@/api/user'
-import { generatePresignedUrl } from '@/api/oss'
 import request from '@/api/request'
+import { resolveOssPreviewUrl, sanitizeStoredMediaUrl } from '@/utils/ossPreview'
 import { useFormValidation } from '@/composables/useFormValidation'
 import { useAvatarUpload } from '@/composables/useAvatarUpload'
 
@@ -290,48 +290,15 @@ const handleChangePassword = async () => {
   }
 }
 
-// 清理头像URL，移除OSS签名参数
-const sanitizeAvatarUrl = (avatarUrl) => {
-  if (!avatarUrl) return ''
-  // 移除?号及其后面的所有参数（OSS签名参数）
-  const questionIndex = avatarUrl.indexOf('?')
-  if (questionIndex > 0) {
-    return avatarUrl.substring(0, questionIndex)
-  }
-  return avatarUrl
-}
-
 // 初始化编辑表单
 const initEditForm = async () => {
   editForm.realName = userInfo.value.realName || ''
   editForm.phone = userInfo.value.phone || ''
   editForm.gender = userInfo.value.gender || 0
   editForm.birthDate = userInfo.value.birthDate || ''
-  // 清理头像URL，移除签名参数，只保存原始URL
-  const rawAvatarUrl = sanitizeAvatarUrl(userInfo.value.avatar)
+  const rawAvatarUrl = sanitizeStoredMediaUrl(userInfo.value.avatar)
   editForm.avatar = rawAvatarUrl
-  
-  // 如果有原始URL，生成签名URL用于预览
-  if (rawAvatarUrl) {
-    try {
-      const signedUrlResponse = await generatePresignedUrl(rawAvatarUrl, 60)
-      if (signedUrlResponse && signedUrlResponse.code === 200) {
-        const signedUrl = signedUrlResponse.data || signedUrlResponse.message
-        if (signedUrl && signedUrl.startsWith('http')) {
-          avatarPreview.value = signedUrl
-        } else {
-          avatarPreview.value = rawAvatarUrl
-        }
-      } else {
-        avatarPreview.value = rawAvatarUrl
-      }
-    } catch (e) {
-      // 如果生成签名URL失败，使用原始URL或userInfo中的URL
-      avatarPreview.value = userInfo.value.avatar || rawAvatarUrl
-    }
-  } else {
-    avatarPreview.value = ''
-  }
+  avatarPreview.value = rawAvatarUrl ? await resolveOssPreviewUrl(rawAvatarUrl, 60) : ''
 }
 
 // 打开编辑对话框

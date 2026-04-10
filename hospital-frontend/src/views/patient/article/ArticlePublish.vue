@@ -44,7 +44,7 @@
               </template>
             </el-upload>
             <div v-else class="cover-preview">
-              <el-image :src="form.coverImage" fit="contain" class="cover-preview-img" :preview-src-list="[form.coverImage]" preview-teleported />
+              <el-image :src="coverPreviewUrl" fit="contain" class="cover-preview-img" :preview-src-list="coverPreviewUrl ? [coverPreviewUrl] : []" preview-teleported />
               <div class="cover-preview-actions">
                 <el-button type="primary" link @click="form.coverImage = ''">重新上传</el-button>
               </div>
@@ -64,13 +64,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { UploadFilled } from '@element-plus/icons-vue'
 import message from '@/plugins/message'
 import { useRoute, useRouter } from 'vue-router'
 import { getArticleDetail, publishArticle, updateArticle } from '@/api/article'
 import { ARTICLE_CATEGORY_OPTIONS } from '@/utils/articleCategory'
 import { uploadArticleCover } from '@/api/upload'
+import { resolveOssPreviewUrl, sanitizeStoredMediaUrl } from '@/utils/ossPreview'
 const router = useRouter()
 const route = useRoute()
 const submitting = ref(false)
@@ -103,6 +104,24 @@ const rules = {
 const id = computed(() => route.params.id)
 const isEdit = computed(() => !!id.value)
 
+/** 与头像一致：持久化存无签名 URL，展示用预签名或解析后的地址 */
+const coverPreviewUrl = ref('')
+let coverPreviewSeq = 0
+watch(
+  () => form.coverImage,
+  async (url) => {
+    const seq = ++coverPreviewSeq
+    if (!url) {
+      coverPreviewUrl.value = ''
+      return
+    }
+    const preview = await resolveOssPreviewUrl(url, 60)
+    if (seq !== coverPreviewSeq) return
+    coverPreviewUrl.value = preview
+  },
+  { immediate: true }
+)
+
 const beforeCoverUpload = (raw) => {
   const name = (raw && raw.name) || ''
   const okType = raw.type === 'image/jpeg' || raw.type === 'image/png' || /\.(jpe?g|png)$/i.test(name)
@@ -122,7 +141,7 @@ const coverUpload = async (options) => {
   try {
     const res = await uploadArticleCover(file)
     if (res.code === 200 && res.data) {
-      form.coverImage = res.data
+      form.coverImage = sanitizeStoredMediaUrl(res.data)
       message.success('上传成功')
     }
   } catch (e) {
@@ -136,7 +155,7 @@ const loadForEdit = async () => {
   const data = res.data || {}
   form.title = data.title || ''
   form.category = data.category || ''
-  form.coverImage = data.coverImage || ''
+  form.coverImage = sanitizeStoredMediaUrl(data.coverImage || '')
   form.summary = data.summary || ''
   form.content = data.content || ''
   form.tags = data.tags || ''
