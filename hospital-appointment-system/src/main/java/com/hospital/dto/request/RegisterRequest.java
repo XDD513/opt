@@ -41,6 +41,7 @@ public class RegisterRequest implements Serializable {
      * 真实姓名
      */
     @NotBlank(message = "真实姓名不能为空")
+    @Pattern(regexp = "^[\\u4e00-\\u9fa5]+(·[\\u4e00-\\u9fa5]+)*$", message = "姓名格式不正确")
     private String realName;
 
     /**

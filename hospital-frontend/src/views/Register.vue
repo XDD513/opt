@@ -163,14 +163,32 @@ const registerRules = {
   ],
   realName: [
     { required: true, message: '请输入真实姓名', trigger: 'blur' },
-    { min: 2, max: 20, message: '姓名长度在2-20个字符', trigger: 'blur' }
+    {
+      pattern: /^[\u4e00-\u9fa5]+(·[\u4e00-\u9fa5]+)*$/,
+      message: '姓名格式不正确',
+      trigger: 'blur'
+    }
   ],
   phone: [
     { required: true, message: '请输入手机号', trigger: 'blur' },
-    { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+    { pattern: /^1[3-9]\d{9}$/, message: '手机号格式不正确', trigger: 'blur' }
   ],
   idCard: [
-    { pattern: /^[1-9]\d{5}(18|19|20)\d{2}(0[1-9]|1[0-2])(0[1-9]|[12]\d|3[01])\d{3}[\dXx]$/, message: '请输入正确的身份证号', trigger: 'blur' }
+    {
+      validator: (rule, value, callback) => {
+        const v = (value || '').trim()
+        if (!v) {
+          callback()
+          return
+        }
+        if (/^(\d{15}|\d{17}([0-9]|X|x))$/.test(v)) {
+          callback()
+        } else {
+          callback(new Error('身份证号格式不正确'))
+        }
+      },
+      trigger: 'blur'
+    }
   ],
   birthDate: [
     { required: true, message: '请填写出生日期', trigger: 'change' }

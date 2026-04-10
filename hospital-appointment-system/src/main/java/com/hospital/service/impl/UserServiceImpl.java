@@ -233,6 +233,13 @@ public class UserServiceImpl implements UserService {
             return Result.error(ResultCode.USER_PHONE_EXISTS);
         }
 
+        if (StringUtils.hasText(request.getIdCard())) {
+            String idc = request.getIdCard().trim();
+            if (!idc.matches("(^\\d{15}$)|(^\\d{17}([0-9]|X|x)$)")) {
+                return Result.error(ResultCode.BAD_REQUEST.getCode(), "身份证号格式不正确");
+            }
+        }
+
         // 4. 创建用户对象
         User user = new User();
         user.setUsername(request.getUsername());
