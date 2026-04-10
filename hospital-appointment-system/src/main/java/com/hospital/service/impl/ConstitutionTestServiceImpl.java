@@ -17,6 +17,7 @@ import com.hospital.mapper.*;
 import com.hospital.service.ConstitutionTestService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +36,7 @@ import java.util.stream.Collectors;
 public class ConstitutionTestServiceImpl implements ConstitutionTestService {
 
     private static final int MAX_USER_SELF_DESCRIPTION_LEN = 2000;
+    private static final String TONGUE_FALLBACK_MESSAGE = "识别服务暂时不可用";
 
     @Autowired
     private UserConstitutionTestMapper testMapper;
@@ -65,6 +67,9 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
 
     @Autowired
     private com.hospital.service.OssService ossService;
+
+    @Value("${hospital.ai.base-url:http://localhost:5000}")
+    private String aiBaseUrl;
 
     @Override
     public Result<Map<String, Object>> tongueDiagnosis(org.springframework.web.multipart.MultipartFile file) {
@@ -104,7 +109,7 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
             org.springframework.http.HttpEntity<org.springframework.util.MultiValueMap<String, Object>> requestEntity =
                     new org.springframework.http.HttpEntity<>(body, headers);
 
-            String aiUrl = "http://localhost:5000/predict_v2";
+            String aiUrl = buildAiPredictUrl();
             try {
                 org.springframework.http.ResponseEntity<Map> response = restTemplate.postForEntity(aiUrl, requestEntity, Map.class);
                 if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
@@ -162,7 +167,7 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
                 log.warn("AI服务调用失败，进入降级模式: {}", e.getMessage());
                 // 降级处理：返回一个空的识别结果，允许用户继续
                 Map<String, Object> fallbackData = new HashMap<>();
-                fallbackData.put("feature", "识别服务暂时不可用");
+                fallbackData.put("feature", TONGUE_FALLBACK_MESSAGE);
                 fallbackData.put("features_list", new ArrayList<>());
                 fallbackData.put("image_base64", "");
                 if (ossUrl != null) {
@@ -196,6 +201,15 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
             if (request.getTongueResult() == null || request.getTongueResult().isEmpty()) {
                 log.warn("舌诊结果为空");
                 return Result.error(ResultCode.PARAM_ERROR.getCode(), "请先完成舌诊分析");
+            }
+            try {
+                JSONObject tongueJson = JSONUtil.parseObj(request.getTongueResult());
+                if (Boolean.TRUE.equals(tongueJson.getBool("is_fallback"))) {
+                    return Result.error(ResultCode.PARAM_ERROR.getCode(), TONGUE_FALLBACK_MESSAGE);
+                }
+            } catch (Exception e) {
+                log.warn("解析舌诊结果失败: {}", e.getMessage());
+                return Result.error(ResultCode.PARAM_ERROR.getCode(), "舌诊结果格式异常");
             }
             // 问卷答案已下线：统一保存空对象，兼容历史字段/库表
             Map<Long, Long> answers = new HashMap<>();
@@ -1001,6 +1015,17 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
             return t;
         }
         return t.substring(0, MAX_USER_SELF_DESCRIPTION_LEN);
+    }
+
+    private String buildAiPredictUrl() {
+        String base = aiBaseUrl == null ? "" : aiBaseUrl.trim();
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        if (base.isEmpty()) {
+            base = "http://localhost:5000";
+        }
+        return base + "/predict_v2";
     }
 }
 

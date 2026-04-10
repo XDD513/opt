@@ -13,6 +13,10 @@ server:
       enabled: true
       force: true
 
+hospital:
+  ai:
+    base-url: ${HOSPITAL_AI_BASE_URL:http://localhost:5000}
+
 # MyBatis-Plus配置
 mybatis-plus:
   mapper-locations: classpath*:/mapper/**/*.xml

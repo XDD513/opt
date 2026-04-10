@@ -153,14 +153,23 @@ const {
  */
 const handleTongueAnalysis = (data) => {
   // data 包含 feature, features_list, image_url 等
-  // 为了显示提交按钮，我们需要确保 tongueResult 有值。
   if (data) {
     state.tongueAnalysisRaw = data
+    if (data.is_fallback === true) {
+      state.tongueResult = null
+      state.tongueFeatures = []
+      state.tongueImageUrl = data.image_url || null
+      state.featuresDetail = []
+      state.mlScores = null
+      sessionStorage.setItem('hospital_tongue_unavailable', '1')
+      return
+    }
     state.tongueResult = data.feature || 'AnalysisCompleted'
     state.tongueFeatures = data.features_list || []
     state.tongueImageUrl = data.image_url || null
     state.featuresDetail = data.features_detail || []
     state.mlScores = data.ml_scores || null
+    sessionStorage.removeItem('hospital_tongue_unavailable')
   }
 }
 
@@ -507,6 +516,10 @@ onMounted(async () => {
   state.isInitialized = true
   if (state && state.latestGeneratedRecipe == null) {
     state.latestGeneratedRecipe = null
+  }
+  if (sessionStorage.getItem('hospital_tongue_unavailable') === '1') {
+    message.warning('识别服务暂时不可用')
+    sessionStorage.removeItem('hospital_tongue_unavailable')
   }
 })
 

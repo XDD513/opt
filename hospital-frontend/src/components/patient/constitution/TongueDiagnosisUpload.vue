@@ -41,14 +41,18 @@
       </div>
 
       <el-alert
-        title="舌诊分析完成"
-        type="success"
-        :description="`主特征：${(result.features_list && result.features_list.length > 0) ? result.features_list.join(', ') : (result.feature || '未检测到明显特征')}`"
+        :title="alertTitle"
+        :type="alertType"
+        :description="alertDescription"
         show-icon
         :closable="false"
       />
       
-      <div class="features-list-container" v-if="result.features_detail && result.features_detail.length > 0">
+      <div v-if="isFallback" class="fallback-hint">
+        当前识别服务处于降级状态，已保留图片上传结果，请稍后重试舌诊分析。
+      </div>
+
+      <div class="features-list-container" v-else-if="result.features_detail && result.features_detail.length > 0">
         <p class="sub-title">详细特征置信度：</p>
         <div class="feature-item" v-for="item in result.features_detail" :key="item.name">
           <span class="feature-name">{{ item.name }}</span>
@@ -77,7 +81,7 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { UploadFilled } from '@element-plus/icons-vue'
 import { ElMessage } from 'element-plus'
 import request from '@/api/request'
@@ -107,6 +111,20 @@ const customColors = [
   { color: '#e6a23c', percentage: 70 },
   { color: '#67c23a', percentage: 100 },
 ]
+
+const isFallback = computed(() => result.value?.is_fallback === true)
+const alertTitle = computed(() => (isFallback.value ? '舌诊识别服务暂时不可用' : '舌诊分析完成'))
+const alertType = computed(() => (isFallback.value ? 'warning' : 'success'))
+const alertDescription = computed(() => {
+  if (isFallback.value) {
+    return result.value?.feature || '识别服务暂时不可用'
+  }
+  const features = result.value?.features_list
+  const featureText = Array.isArray(features) && features.length > 0
+    ? features.join(', ')
+    : (result.value?.feature || '未检测到明显特征')
+  return `主特征：${featureText}`
+})
 
 const beforeUpload = (file) => {
   const isJPGOrPNG = file.type === 'image/jpeg' || file.type === 'image/png'
@@ -140,7 +158,11 @@ const uploadFile = async (options) => {
       result.value = res.data
       // 发送完整的分析结果给父组件，包含 feature, features_list, image_url 等
       emit('analysis-complete', res.data)
-      ElMessage.success('舌诊分析成功')
+      if (res.data.is_fallback === true) {
+        ElMessage.warning(res.data.feature || '识别服务暂时不可用')
+      } else {
+        ElMessage.success('舌诊分析成功')
+      }
     } else {
       ElMessage.error(res.message || '分析失败')
     }
@@ -219,4 +241,15 @@ const uploadFile = async (options) => {
 .feature-progress {
     flex: 1;
   }
+
+.fallback-hint {
+  margin-top: 12px;
+  color: #92400e;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.5;
+}
 </style>
