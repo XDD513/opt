@@ -73,8 +73,8 @@
               </el-form-item>
             </el-col>
             <el-col :span="12">
-              <el-form-item label="血型">
-                <el-select v-model="formData.bloodType" placeholder="请选择血型" @blur="handleFieldBlur('bloodType')">
+              <el-form-item label="血型" prop="bloodType" required>
+                <el-select v-model="formData.bloodType" placeholder="请选择血型" style="width: 100%" @blur="handleFieldBlur('bloodType')">
                   <el-option label="A型" value="A" />
                   <el-option label="B型" value="B" />
                   <el-option label="AB型" value="AB" />
@@ -185,7 +185,8 @@ const rules = {
   gender: [{ required: true, message: '请选择性别', trigger: 'change' }],
   age: [{ required: true, message: '请输入年龄', trigger: 'blur' }],
   height: [{ required: true, message: '请输入身高', trigger: 'blur' }],
-  weight: [{ required: true, message: '请输入体重', trigger: 'blur' }]
+  weight: [{ required: true, message: '请输入体重', trigger: 'blur' }],
+  bloodType: [{ required: true, message: '请选择血型', trigger: 'change' }]
 }
 
 // 体质类型映射

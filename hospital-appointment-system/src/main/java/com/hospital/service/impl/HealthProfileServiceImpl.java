@@ -20,6 +20,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+import org.springframework.util.StringUtils;
+
 /**
  * 健康档案服务实现类
  *
@@ -144,6 +146,15 @@ public class HealthProfileServiceImpl implements HealthProfileService {
     @Transactional(rollbackFor = Exception.class)
     public Result<UserHealthProfile> updateHealthProfile(UserHealthProfile profile) {
         try {
+            if (!StringUtils.hasText(profile.getBloodType())) {
+                return Result.error(ResultCode.PARAM_ERROR.getCode(), "请选择血型");
+            }
+            String bt = profile.getBloodType().trim();
+            if (!("A".equals(bt) || "B".equals(bt) || "AB".equals(bt) || "O".equals(bt))) {
+                return Result.error(ResultCode.PARAM_ERROR.getCode(), "请选择血型");
+            }
+            profile.setBloodType(bt);
+
             // 计算BMI
             if (profile.getHeight() != null && profile.getWeight() != null) {
                 double heightInMeters = profile.getHeight() / 100.0;
