@@ -279,7 +279,7 @@ import * as echarts from 'echarts'
 import { InfoFilled } from '@element-plus/icons-vue'
 import { getTestReport } from '@/api/constitution'
 import { createHealthPlan } from '@/api/health'
-import { saveRecipeFromSuggestion, getRecipesByTestId } from '@/api/recipe'
+import { favoriteRecipe, saveRecipeFromSuggestion, getRecipesByTestId } from '@/api/recipe'
 import { CONSTITUTION_TYPE_MAP } from '@/utils/constitution'
 import { parseAiHealthSuggestion, normalizeAcupointsList } from '@/utils/parseAiHealthJson'
 
@@ -459,12 +459,29 @@ const handleSaveRecipes = async () => {
     })
     if (res.code === 200) {
       recipesSaved.value = true
-      message.success('药膳建议保存成功')
+      // 保存后自动收藏，确保在“药膳列表/我的药膳收藏”都可见
+      let favorited = false
+      try {
+        if (res?.data?.id != null) {
+          await favoriteRecipe(res.data.id)
+          favorited = true
+        }
+      } catch (_) {}
+      message.success(favorited ? '药膳建议保存成功（已自动收藏）' : '药膳建议保存成功')
       // 3) 刷新“本次生成的药膳”列表，用于后续再次点击时能正确判断已存在
       try {
         const rr = await getRecipesByTestId(result.value.id)
         if (rr?.code === 200) {
           testRecipes.value = Array.isArray(rr.data) ? rr.data : []
+          // 若后端未直接返回 id，这里尝试按标题匹配并补一次收藏
+          if (!favorited) {
+            const title2 = parseRecipeTitle(recipeText.value)
+            const matched = title2 ? testRecipes.value.find(r => String(r?.recipeName || '').trim() == String(title2).trim()) : null
+            const id2 = matched?.id
+            if (id2 != null) {
+              try { await favoriteRecipe(id2) } catch (_) {}
+            }
+          }
         }
       } catch (_) {}
     } else {

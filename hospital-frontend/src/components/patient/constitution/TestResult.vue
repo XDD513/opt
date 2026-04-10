@@ -926,7 +926,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { createHealthPlan } from '@/api/health'
-import { getRecipesByTestId, saveRecipeFromJson, saveRecipeFromSuggestion } from '@/api/recipe'
+import { favoriteRecipe, getRecipesByTestId, saveRecipeFromJson, saveRecipeFromSuggestion } from '@/api/recipe'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useUserStore } from '@/stores/user'
 import { MagicStick, Aim, Calendar, Timer } from '@element-plus/icons-vue'
@@ -1517,7 +1517,13 @@ const handleSaveRecipeSuggestion = async () => {
   try {
     const res = await saveRecipeFromSuggestion({ testId: props.testResult?.id, text: parsedAiSuggestion.value.recipeText })
     if (res?.code === 200 && res?.data) {
-      ElMessage.success('药膳已保存')
+      // 保存后同时加入收藏，确保“药膳列表/收藏页”都可见
+      try {
+        if (res.data?.id != null) await favoriteRecipe(res.data.id)
+      } catch (_) {
+        // 收藏失败不影响“已入库”
+      }
+      ElMessage.success('药膳已保存并收藏')
       // 通知父组件更新“最近一次已入库的药膳”
       emit('recipe-saved', res.data)
     } else {
@@ -1561,6 +1567,7 @@ const handleSaveBatchRecipes = async () => {
     let successCount = 0
     let existedCount = 0
     let lastSaved = null
+    let favoriteCount = 0
 
     for (const rec of list) {
       const recipeName = rec?.recipeName || rec?.name || 'AI药膳'
@@ -1612,11 +1619,22 @@ const handleSaveBatchRecipes = async () => {
         successCount++
         lastSaved = res.data
         existedNames.add(normalizedRecipeName)
+        // 保存后自动收藏
+        try {
+          if (res.data?.id != null) {
+            await favoriteRecipe(res.data.id)
+            favoriteCount++
+          }
+        } catch (_) {
+          // ignore
+        }
       }
     }
 
     if (successCount > 0) {
-      ElMessage.success(`成功保存 ${successCount} 个药膳${existedCount > 0 ? `（已存在 ${existedCount} 个，已跳过）` : ''}`)
+      ElMessage.success(
+        `成功保存 ${successCount} 个药膳${favoriteCount > 0 ? `（已自动收藏 ${favoriteCount} 个）` : ''}${existedCount > 0 ? `（已存在 ${existedCount} 个，已跳过）` : ''}`
+      )
       if (lastSaved) emit('recipe-saved', lastSaved)
       emit('batch-recipes-saved', { count: successCount, lastSaved })
     } else if (existedCount > 0) {
