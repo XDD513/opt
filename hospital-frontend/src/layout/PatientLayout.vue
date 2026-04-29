@@ -65,22 +65,6 @@
       </el-main>
     </el-container>
 
-    <!-- 右下角聊天按钮 -->
-    <div class="chat-float-button" @click="handleChatButtonClick">
-      <el-icon :size="24">
-        <Close v-if="chatWidgetVisible" />
-        <ChatLineRound v-else />
-      </el-icon>
-    </div>
-
-    <!-- 聊天窗口组件 -->
-    <ChatWidget 
-      :visible="chatWidgetVisible" 
-      :conversationId="adminConversationId"
-      @close="handleChatClose" 
-      @send="handleChatSend" 
-    />
-
     <el-drawer
       v-model="sidebarDrawerVisible"
       direction="ltr"
@@ -105,41 +89,13 @@ import { computed, inject, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import message from '@/plugins/message'
-import {
-  Van,
-  HomeFilled,
-  Calendar,
-  Plus,
-  Tickets,
-  User,
-  Document,
-  Food,
-  List,
-  Star,
-  Pointer,
-  Location,
-  Connection,
-  ChatDotRound,
-  ChatLineRound,
-  Reading,
-  EditPen,
-  CollectionTag,
-  Notebook,
-  DataAnalysis,
-  Setting,
-  Close,
-  Menu,
-  Fold,
-  Expand
-} from '@element-plus/icons-vue'
+import { Van, User, Close, Menu, Fold, Expand } from '@element-plus/icons-vue'
 import { getUserInfo } from '@/api/user'
 import { useUserStore } from '@/stores/user'
  
 import { getAppConfig } from '@/config/runtimeConfig'
 import dayjs from 'dayjs'
-import ChatWidget from '@/components/ChatWidget.vue'
 import PatientSidebarMenu from '@/components/patient/PatientSidebarMenu.vue'
-import { fetchConversations, createConversation, getOrCreateAdminConversation, markAllConversationsAsRead } from '@/api/dialogue'
 import { DEFAULT_AVATAR } from '@/constants/avatar'
 import { createArticleNotificationSocket } from '@/utils/articleNotificationSocket'
 
@@ -152,70 +108,16 @@ const appConfig = inject('appConfig', getAppConfig())
 const systemName = computed(() => appConfig?.systemInfo?.name || '中医体质辨识系统')
 const patientLogoText = computed(() => `${systemName.value} - 患者端`)
 
-let stompClient = null
-
 // 当前激活的菜单
 const activeMenu = computed(() => route.path)
 
-// 聊天窗口显示状态
-const chatWidgetVisible = ref(false)
 const isMobile = ref(false)
 const sidebarDrawerVisible = ref(false)
 const sidebarCollapsed = ref(false)
 const touchStartX = ref(0)
 const touchStartY = ref(0)
 
-// 管理员对话ID
-const adminConversationId = ref(null)
 let articleSocket = null
-
-// 获取或创建管理员对话
-const getOrCreateAdminConversationHandler = async () => {
-  if (adminConversationId.value) {
-    return adminConversationId.value
-  }
-  
-  const currentUserId = userStore.userInfo?.id
-  if (!currentUserId) {
-
-    return null
-  }
-  
-  try {
-    // 调用后端接口获取或创建管理员对话
-    const res = await getOrCreateAdminConversation(currentUserId)
-    if (res.code === 200 && res.data) {
-      adminConversationId.value = res.data.id
-      return adminConversationId.value
-    } else {
-
-      return null
-    }
-  } catch (error) {
-
-    return null
-  }
-}
-
-// 处理聊天按钮点击
-const handleChatButtonClick = async () => {
-  if (!chatWidgetVisible.value) {
-    // 打开聊天窗口时，尝试获取或创建管理员对话
-    await getOrCreateAdminConversationHandler()
-  }
-  
-  chatWidgetVisible.value = !chatWidgetVisible.value
-}
-
-// 关闭聊天窗口
-const handleChatClose = () => {
-  chatWidgetVisible.value = false
-}
-
-// 处理发送消息
-const handleChatSend = (message) => {
-  // 消息发送逻辑由ChatWidget组件处理
-}
 
  
 const avatarSrc = computed(() => userStore.userInfo?.avatar || DEFAULT_AVATAR)
@@ -595,33 +497,6 @@ const formatDateTime = (value) => {
   }
 }
 
-.chat-float-button {
-  position: fixed;
-  right: 24px;
-  bottom: 24px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #52c41a 0%, #389e0d 100%);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 12px rgba(82, 196, 26, 0.4);
-  transition: all 0.3s ease;
-  z-index: 1000;
-
-  &:hover {
-    transform: scale(1.1);
-    box-shadow: 0 6px 16px rgba(82, 196, 26, 0.5);
-  }
-
-  &:active {
-    transform: scale(0.95);
-  }
-}
-
 @media (max-width: 991px) {
   .header {
     padding: 8px 12px;
@@ -644,12 +519,6 @@ const formatDateTime = (value) => {
     padding: 12px;
   }
 
-  .chat-float-button {
-    right: 16px;
-    bottom: 16px;
-    width: 48px;
-    height: 48px;
-  }
 }
 
 .sidebar-drawer {

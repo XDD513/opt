@@ -89,13 +89,6 @@
       </el-menu-item>
     </el-sub-menu>
 
-    <el-menu-item index="/patient/dialogue">
-      <el-icon>
-        <ChatLineRound />
-      </el-icon>
-      <span>智能对话</span>
-    </el-menu-item>
-
     <el-sub-menu index="health">
       <template #title>
         <el-icon>
@@ -141,8 +134,6 @@
 <script setup>
 import {
   Calendar,
-  ChatDotRound,
-  ChatLineRound,
   CircleCheck,
   CollectionTag,
   DataAnalysis,
@@ -155,9 +146,7 @@ import {
   Reading,
   Setting,
   Star,
-  Tickets,
-  User,
-  Plus
+  User
 } from '@element-plus/icons-vue'
 
 const props = defineProps({

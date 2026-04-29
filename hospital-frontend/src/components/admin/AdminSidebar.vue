@@ -136,15 +136,6 @@
         </div>
       </div>
 
-      <!-- 智能对话 -->
-      <div 
-        class="menu-item" 
-        :class="{ active: activeKey === 'dialogue' }"
-        @click="handleMenuClick('dialogue', '智能对话')"
-      >
-        <el-icon class="menu-icon"><ChatLineRound /></el-icon>
-        <span class="menu-title">智能对话</span>
-      </div>
     </div>
   </div>
 </template>
@@ -152,7 +143,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { 
-  House, Setting, UserFilled, ChatLineRound,
+  House, Setting, UserFilled,
   OfficeBuilding, ArrowRight,
   Tools, TrendCharts, Tickets,
   Collection, Document, DocumentChecked
