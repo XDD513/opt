@@ -12,8 +12,9 @@ import random
 app = Flask(__name__)
 
 # 配置
-MODEL_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "best.onnx")
-CLASSES_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "classes.txt")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "best.onnx")
+CLASSES_PATH = os.path.join(BASE_DIR, "classes.txt")
 
 # 加载类别
 classes = []
