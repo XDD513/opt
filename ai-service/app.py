@@ -49,6 +49,31 @@ try:
 except Exception as e:
     print(f"Error loading model: {e}")
 
+def load_annotation_font(font_size=20):
+    """
+    优先加载支持中文的字体；若不可用则返回默认字体并标记不支持中文。
+    """
+    font_paths = [
+        "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+        "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+        "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf",
+        "C:/Windows/Fonts/msyh.ttc",
+        "C:/Windows/Fonts/simhei.ttf"
+    ]
+
+    for fp in font_paths:
+        if os.path.exists(fp):
+            try:
+                font = ImageFont.truetype(fp, font_size)
+                print(f"Loaded annotation font: {fp}")
+                return font, True
+            except Exception:
+                continue
+
+    print("No CJK font found, fallback to default font")
+    return ImageFont.load_default(), False
+
 def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
     shape = im.shape[:2]  # current shape [height, width]
     if isinstance(new_shape, int):
@@ -341,35 +366,15 @@ def predict_v2():
             "xinfeitu": "心肺凸起"
         }
         
-        # 使用 clf_feature_names 作为键，clf_features 作为值，并将键转换为中文 (用于返回数据)
+        # 加载字体：有中文字体则输出中文，否则自动回退英文避免乱码
+        font, supports_chinese = load_annotation_font(font_size=20)
+
+        # 使用 clf_feature_names 作为键，clf_features 作为值
         raw_features = {}
         for name, val in zip(clf_feature_names, clf_features):
             if val > 0.001:
-                display_name = feature_name_map.get(name, name)
+                display_name = feature_name_map.get(name, name) if supports_chinese else name
                 raw_features[display_name] = round(float(val), 4)
-
-        # 加载中文字体 (尝试加载系统字体)
-        font = None
-        # 尝试加载中文字体路径 (Windows/Linux)
-        font_paths = [
-            "C:/Windows/Fonts/msyh.ttc", # Windows 微软雅黑
-            "C:/Windows/Fonts/simhei.ttf", # Windows 黑体
-            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc", # Linux
-            "/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf"
-        ]
-        
-        for fp in font_paths:
-            if os.path.exists(fp):
-                try:
-                    font = ImageFont.truetype(fp, 20) # 字号 20
-                    print(f"Loaded font: {fp}")
-                    break
-                except:
-                    continue
-        
-        if font is None:
-            font = ImageFont.load_default()
-            print("Using default font (no Chinese support)")
 
         # 使用 PIL 绘制 (支持中文)
         img_pil = Image.fromarray(cv2.cvtColor(img_draw, cv2.COLOR_BGR2RGB))
@@ -408,8 +413,8 @@ def predict_v2():
             # 获取该类别的颜色
             color = get_color(label_en)
             
-            # 如果字体支持中文，优先显示中文
-            label_text = f"{label_cn} {conf:.2f}"
+            label_name = label_cn if supports_chinese else label_en
+            label_text = f"{label_name} {conf:.2f}"
             
             # 绘制矩形框
             draw.rectangle([x1, y1, x2, y2], outline=color, width=3)
