@@ -29,6 +29,7 @@ import { getLatestTestResult } from '@/api/constitution'
 import { getRecommendedRecipes } from '@/api/recipe'
 import { getPatientStats } from '@/api/statistics'
 import { getAppConfig } from '@/config/runtimeConfig'
+import { getCheckinList } from '@/api/health'
 import HspHeroBanner from '@/components/patient/HspHeroBanner.vue'
 import HspStatGrid from '@/components/patient/HspStatGrid.vue'
 import HspConstitutionPanel from '@/components/patient/HspConstitutionPanel.vue'
@@ -54,6 +55,32 @@ const latestConstitution = ref(null)
 const recommendedRecipes = ref([])
 const recipesLoading = ref(false)
 
+const calculateContinuousStreakFromRecords = (records = []) => {
+  if (!records.length) {
+    return 0
+  }
+
+  const dateSet = new Set(
+    records
+      .map(item => dayjs(item.checkinDate).format('YYYY-MM-DD'))
+      .filter(Boolean)
+  )
+
+  const today = dayjs().format('YYYY-MM-DD')
+  if (!dateSet.has(today)) {
+    return 0
+  }
+
+  let streak = 1
+  let cursor = dayjs(today).subtract(1, 'day')
+  while (dateSet.has(cursor.format('YYYY-MM-DD'))) {
+    streak++
+    cursor = cursor.subtract(1, 'day')
+  }
+
+  return streak
+}
+
 // 并行加载所有数据
 const loadAllData = async () => {
   const userId = userStore.userInfo?.id
@@ -75,6 +102,26 @@ const loadAllData = async () => {
     }).catch(() => {
       // 使用默认值
       stats.value = { testCount: 0, recipeCount: 0, checkinDays: 0 }
+    }),
+
+    // 连续打卡天数（按今天向前连续计算）
+    getCheckinList({
+      userId,
+      startDate: dayjs().subtract(180, 'day').format('YYYY-MM-DD'),
+      endDate: dayjs().format('YYYY-MM-DD'),
+      pageNum: 1,
+      pageSize: 1000
+    }).then(res => {
+      if (res.code === 200) {
+        const records = res.data?.records || res.data?.list || res.data || []
+        const streakDays = calculateContinuousStreakFromRecords(records)
+        stats.value = {
+          ...stats.value,
+          checkinDays: streakDays
+        }
+      }
+    }).catch(() => {
+      // 保留统计接口返回值
     }),
 
     // 最新体质测试结果

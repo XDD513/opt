@@ -90,9 +90,26 @@ function buildStressHtml(sr) {
 const BASE_URL = (process.env.BASE_URL || 'http://localhost:8000').replace(/\/$/, '');
 const TEST_USERNAME = process.env.TEST_USERNAME || process.env.ACC_USERNAME || '';
 const TEST_PASSWORD = process.env.TEST_PASSWORD || process.env.ACC_PASSWORD || '';
+const TEST_TOKEN = process.env.TEST_TOKEN || '';
+const TEST_USER_ID = process.env.TEST_USER_ID || '';
 const ADMIN_USERNAME = process.env.ADMIN_USERNAME || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const PERF_ROUNDS = Math.max(3, parseInt(process.env.PERF_ROUNDS || '10', 10) || 10);
+
+function decodeJwtPayload(token) {
+  try {
+    if (!token || token.split('.').length < 2) return null;
+    const payload = token.split('.')[1]
+      .replace(/-/g, '+')
+      .replace(/_/g, '/');
+    const padLen = (4 - (payload.length % 4)) % 4;
+    const padded = payload + '='.repeat(padLen);
+    const json = Buffer.from(padded, 'base64').toString('utf8');
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
 
 function client(token) {
   return axios.create({
@@ -105,21 +122,51 @@ function client(token) {
 
 async function login(username, password) {
   const c = client();
-  const { data, status } = await c.post('/api/user/login', { username, password });
-  if (status !== 200 || data?.code !== 200 || !data?.data?.token) {
-    throw new Error(data?.message || `登录失败 HTTP ${status}`);
+  // 文档口径：POST /api/auth/login（username、password、roleType）
+  const tryRoles = [process.env.LOGIN_ROLE_TYPE, 0, 1, 2].filter((v, i, a) => a.indexOf(v) === i);
+  let lastErr = null;
+  for (const roleType of tryRoles) {
+    try {
+      const { data, status } = await c.post('/api/auth/login', { username, password, roleType });
+      if (status === 200 && data?.code === 200 && data?.data?.token) {
+        // 兼容不同字段命名：id / userId
+        const id = data.data.id ?? data.data.userId ?? null;
+        return { token: data.data.token, userId: id != null ? String(id) : null };
+      }
+      lastErr = new Error(data?.message || `登录失败 HTTP ${status}`);
+    } catch (e) {
+      lastErr = e;
+    }
   }
-  const id = data.data.id;
-  return { token: data.data.token, userId: id != null ? String(id) : null };
+  throw lastErr || new Error('登录失败：未知错误');
+}
+
+async function registerIfNeeded(username, password) {
+  const c = client();
+  // 文档口径：POST /api/auth/register（默认患者）
+  const payload = {
+    username,
+    password,
+    confirmPassword: password,
+    phone: `1${Math.floor(Math.random() * 1e10)
+      .toString()
+      .padStart(10, '0')}`,
+  };
+  const { data, status } = await c.post('/api/auth/register', payload);
+  // 允许“已存在”也视为可继续登录（不同实现可能返回 400/409/业务码）
+  if (status === 200 && data?.code === 200) return { ok: true, created: true };
+  return { ok: false, created: false, status, code: data?.code, message: data?.message };
 }
 
 async function main() {
-  if (!TEST_USERNAME || !TEST_PASSWORD) {
-    console.error(
-      '请配置 .env 中 TEST_USERNAME / TEST_PASSWORD（参考 config.example.env）。勿使用 USERNAME（Windows 系统变量）。'
-    );
-    process.exit(1);
-  }
+  // 若未提供账号，自动注册一个一次性测试用户，降低复现门槛
+  const autoUser =
+    !TEST_USERNAME || !TEST_PASSWORD
+      ? {
+          username: `acc_user_${Date.now()}`,
+          password: `Acc#${Math.random().toString(36).slice(2, 10)}8`,
+        }
+      : null;
 
   const outDir = join(__dirname, 'reports');
   mkdirSync(outDir, { recursive: true });
@@ -129,7 +176,23 @@ async function main() {
   const t0 = Date.now();
   const anonHttp = client(null);
 
-  const { token: userToken, userId } = await login(TEST_USERNAME, TEST_PASSWORD);
+  let userToken = TEST_TOKEN;
+  let userId = TEST_USER_ID || null;
+  if (!userToken) {
+    const username = autoUser?.username || TEST_USERNAME;
+    const password = autoUser?.password || TEST_PASSWORD;
+    if (autoUser) {
+      await registerIfNeeded(username, password);
+    }
+    const r = await login(username, password);
+    userToken = r.token;
+    userId = r.userId;
+  } else if (!userId) {
+    const payload = decodeJwtPayload(userToken);
+    if (payload?.userId != null) {
+      userId = String(payload.userId);
+    }
+  }
   let adminToken = null;
   if (ADMIN_USERNAME && ADMIN_PASSWORD) {
     try {

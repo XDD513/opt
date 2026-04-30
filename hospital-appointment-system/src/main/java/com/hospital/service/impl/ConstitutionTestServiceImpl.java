@@ -583,6 +583,7 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
         List<String> tongueFeatures = new ArrayList<>();
         String tongueResultStr = testResultJson.getStr("tongueResult");
         String userSelfDescription = testResultJson.getStr("userSelfDescription", "");
+        String recentDigest = buildRecentSuggestionDigest(test.getUserId(), testId, 3);
         if (tongueResultStr != null && tongueResultStr.contains("[")) {
             try {
                 JSONObject tj = JSONUtil.parseObj(tongueResultStr);
@@ -605,7 +606,7 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
         StringBuilder fullSuggestion = new StringBuilder();
 
         if ("plans".equals(ph)) {
-            String prior = extractPriorContextForPlans(existingSuggestion);
+            String prior = extractPriorContextForPlans(existingSuggestion, scores, tongueFeatures, userSelfDescription, profile, recentDigest);
             aiRecommendationService.generateHealthPlansRecommendationStream(
                     test.getUserId(), primaryName, scores, tongueFeatures, userSelfDescription, user, profile, prior,
                     chunk -> {
@@ -633,8 +634,13 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
                 log.error("合并健康计划入库失败: testId={}", testId, e);
             }
         } else {
+            String analysisSelfDesc = userSelfDescription;
+            if (recentDigest != null && !recentDigest.isBlank()) {
+                analysisSelfDesc = (userSelfDescription == null ? "" : userSelfDescription)
+                        + "\n\n【近期历史输出摘要（用于去重）】\n" + recentDigest;
+            }
             aiRecommendationService.generateHealthAnalysisRecommendationStream(
-                    test.getUserId(), primaryName, scores, tongueFeatures, userSelfDescription, user, profile,
+                    test.getUserId(), primaryName, scores, tongueFeatures, analysisSelfDesc, user, profile,
                     chunk -> {
                         fullSuggestion.append(chunk);
                         contentConsumer.accept(chunk);
@@ -728,7 +734,12 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
         return base.toString();
     }
 
-    private String extractPriorContextForPlans(String existingRaw) {
+    private String extractPriorContextForPlans(String existingRaw,
+                                               Map<String, Double> scores,
+                                               List<String> tongueFeatures,
+                                               String userSelfDescription,
+                                               com.hospital.entity.UserHealthProfile profile,
+                                               String recentDigest) {
         try {
             cn.hutool.json.JSONObject o = JSONUtil.parseObj(stripMarkdownJsonFence(existingRaw));
             StringBuilder sb = new StringBuilder();
@@ -737,9 +748,99 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
             if (o.containsKey("diet")) {
                 sb.append("\n\n").append(o.get("diet").toString());
             }
+            if (scores != null && !scores.isEmpty()) {
+                sb.append("\n\n体质分值快照: ");
+                scores.entrySet().stream()
+                        .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                        .limit(3)
+                        .forEach(e -> sb.append(e.getKey()).append("=")
+                                .append(String.format("%.2f", e.getValue())).append("; "));
+            }
+            if (tongueFeatures != null && !tongueFeatures.isEmpty()) {
+                List<String> topFeatures = tongueFeatures.stream().distinct().limit(4).collect(Collectors.toList());
+                sb.append("\n舌象特征: ").append(String.join("、", topFeatures));
+            }
+            if (userSelfDescription != null && !userSelfDescription.isBlank()) {
+                sb.append("\n用户自述: ").append(userSelfDescription.trim());
+            }
+            if (profile != null) {
+                List<String> risks = new ArrayList<>();
+                if (profile.getAllergies() != null && !profile.getAllergies().isBlank()) {
+                    risks.add("过敏史=" + profile.getAllergies().trim());
+                }
+                if (profile.getMedicalHistory() != null && !profile.getMedicalHistory().isBlank()) {
+                    risks.add("病史=" + profile.getMedicalHistory().trim());
+                }
+                if (profile.getBmi() != null) {
+                    risks.add("BMI=" + profile.getBmi());
+                }
+                if (!risks.isEmpty()) {
+                    sb.append("\n档案风险: ").append(String.join("；", risks));
+                }
+            }
+            if (recentDigest != null && !recentDigest.isBlank()) {
+                sb.append("\n\n近期历史输出摘要（用于去重）:\n").append(recentDigest);
+            }
             return sb.toString();
         } catch (Exception e) {
             return existingRaw != null ? existingRaw : "";
+        }
+    }
+
+    private String buildRecentSuggestionDigest(Long userId, Long currentTestId, int limit) {
+        try {
+            List<UserConstitutionTest> tests = testMapper.selectHistoryByUserId(userId);
+            if (tests == null || tests.isEmpty()) {
+                return "";
+            }
+            List<String> chunks = new ArrayList<>();
+            for (UserConstitutionTest t : tests) {
+                if (t == null || Objects.equals(t.getId(), currentTestId)) {
+                    continue;
+                }
+                if (chunks.size() >= limit) {
+                    break;
+                }
+                JSONObject row = t.getTestResult() != null ? JSONUtil.parseObj(t.getTestResult()) : null;
+                if (row == null) {
+                    continue;
+                }
+                String ai = row.getStr("aiSuggestion", "");
+                if (ai == null || ai.isBlank()) {
+                    continue;
+                }
+                try {
+                    JSONObject aiObj = JSONUtil.parseObj(stripMarkdownJsonFence(ai));
+                    String analysis = aiObj.getStr("analysis", "");
+                    String analysisShort = analysis == null ? "" : analysis.replaceAll("\\s+", " ").trim();
+                    if (analysisShort.length() > 80) {
+                        analysisShort = analysisShort.substring(0, 80) + "...";
+                    }
+                    List<String> planNames = new ArrayList<>();
+                    if (aiObj.containsKey("plans")) {
+                        cn.hutool.json.JSONArray arr = aiObj.getJSONArray("plans");
+                        if (arr != null) {
+                            for (int i = 0; i < arr.size(); i++) {
+                                JSONObject p = arr.getJSONObject(i);
+                                if (p != null) {
+                                    String n = p.getStr("planName", "");
+                                    if (n != null && !n.isBlank()) {
+                                        planNames.add(n.trim());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    chunks.add("- 测试#" + t.getId()
+                            + " 分析摘要: " + (analysisShort.isBlank() ? "（无）" : analysisShort)
+                            + (planNames.isEmpty() ? "" : "；历史计划: " + String.join("、", planNames)));
+                } catch (Exception ignored) {
+                    // ignore broken historical content
+                }
+            }
+            return String.join("\n", chunks);
+        } catch (Exception e) {
+            return "";
         }
     }
 

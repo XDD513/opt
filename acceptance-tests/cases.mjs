@@ -3,6 +3,14 @@
  */
 import { wrapSuccess, wrapExpectBodyCode, wrapExpectHttp } from './lib/assert.mjs';
 
+function getSeasonValue() {
+  const m = new Date().getMonth() + 1;
+  if (m >= 3 && m <= 5) return 'SPRING';
+  if (m >= 6 && m <= 8) return 'SUMMER';
+  if (m >= 9 && m <= 11) return 'AUTUMN';
+  return 'WINTER';
+}
+
 /**
  * @typedef {object} AccCase
  * @property {string} id
@@ -229,7 +237,8 @@ export function buildCases() {
     module: '养生推荐',
     scene: '节气养生',
     name: '时令药膳',
-    run: async ({ userHttp }) => wrapSuccess(await userHttp.get('/api/recipe/seasonal')),
+    run: async ({ userHttp }) =>
+      wrapSuccess(await userHttp.get('/api/recipe/seasonal', { params: { season: getSeasonValue(), limit: 10 } })),
   });
   cases.push({
     id: 'TC-ACC-REC-009',

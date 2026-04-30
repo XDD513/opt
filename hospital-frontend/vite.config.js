@@ -1,13 +1,16 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import { resolve } from 'path'
 
 export default defineConfig(({ mode }) => {
   // 加载环境变量
   const env = loadEnv(mode, process.cwd(), '')
-  
+  // 设为 0 可关闭 HTTPS（仅本机 http）；手机测摄像头建议保持默认以启用自签证书
+  const devHttps = env.VITE_DEV_HTTPS !== '0'
+
   return {
-  plugins: [vue()],
+  plugins: [vue(), ...(devHttps ? [basicSsl()] : [])],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')
@@ -25,6 +28,7 @@ export default defineConfig(({ mode }) => {
     }
   },
   server: {
+    host: true,
     port: parseInt(env.VITE_PORT || '3000', 10),
     proxy: {
       '/api': {

@@ -627,11 +627,18 @@ export function useConstitutionTest() {
       const dict = Array.isArray(state.seasonDictionary) ? state.seasonDictionary : []
       const seasonItem = dict.find(d => (d.dictValue || d.dict_value) === seasonValue)
       const seasonLabel = seasonItem?.dictName || seasonItem?.dict_label || seasonValue
+      const rotationHints = ['汤羹类优先', '粥饮类优先', '清炒炖煮类优先']
+      const rotationHint = rotationHints[i % rotationHints.length]
       const ask = [
         `请基于中医体质“${constitution}”生成以下药膳的标准化JSON：${name}。`,
         `当前季节：${seasonLabel}（${seasonValue}）。请优先选用当季相宜食材、烹饪方法与禁忌。`,
+        `本批次已生成药膳：${queue.slice(0, i).join('、') || '无'}。请避免与已生成菜名同义重复。`,
+        `本条轮换偏好：${rotationHint}（用于降低跨次模板重复，可在满足体质适配前提下灵活处理）。`,
         '请返回字段：recipeName, constitutionType, season, category, difficulty, cookingTime, servings, ingredients[{name,amount,unit,note}], steps[string[]], efficacy, suitableSymptoms, contraindications, nutritionInfo{calorie,protein_g,fat_g,carb_g}, tips。',
         '字段不可省略，键名必须完全一致。constitutionType取值：PINGHE|QIXU|YANGXU|YINXU|TANSHI|SHIRE|XUEYU|QIYU|TEBING|ALL；season取值：SPRING|SUMMER|AUTUMN|WINTER|ALL；difficulty取值1-5。',
+        '去重约束：recipeName 不能与本批次已生成药膳重名或同义；主料与上一道药膳不得完全相同；同一主料在本批次最多出现2次。',
+        '内容约束：必须给出可执行烹饪步骤；禁忌需具体，不可只写“忌辛辣”等空泛词。',
+        `个体化约束：efficacy 与 suitableSymptoms 必须明确说明为何匹配“${constitution}”体质与“${seasonLabel}”时令；contraindications 需给出明确风险人群或症状。`,
         '仅输出 JSON。'
       ].join(' ')
 

@@ -497,6 +497,112 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
         }
     }
 
+    private List<Map.Entry<String, Double>> getSortedScoreEntries(Map<String, Double> scores) {
+        if (scores == null || scores.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return scores.entrySet().stream()
+                .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
+                .collect(Collectors.toList());
+    }
+
+    private String buildTopConstitutionSummary(Map<String, Double> scores) {
+        Map<String, String> constitutionNameMap = buildConstitutionNameMap();
+        List<Map.Entry<String, Double>> sorted = getSortedScoreEntries(scores);
+        if (sorted.isEmpty()) {
+            return "（无体质分值数据）";
+        }
+        Map.Entry<String, Double> first = sorted.get(0);
+        String firstName = constitutionNameMap.getOrDefault(first.getKey(), first.getKey());
+        String firstPart = firstName + "(" + String.format("%.2f", first.getValue()) + ")";
+        if (sorted.size() == 1) {
+            return firstPart;
+        }
+        Map.Entry<String, Double> second = sorted.get(1);
+        String secondName = constitutionNameMap.getOrDefault(second.getKey(), second.getKey());
+        double diff = first.getValue() - second.getValue();
+        String secondPart = secondName + "(" + String.format("%.2f", second.getValue()) + ")";
+        return firstPart + "，次高：" + secondPart + "，分差：" + String.format("%.2f", diff);
+    }
+
+    private String buildTongueFeatureSummary(List<String> tongueFeatures) {
+        if (tongueFeatures == null || tongueFeatures.isEmpty()) {
+            return "（无明显舌象特征）";
+        }
+        Map<String, String> tongueMap = buildTongueFeatureCnMap();
+        return tongueFeatures.stream()
+                .filter(StringUtils::hasText)
+                .map(f -> tongueMap.getOrDefault(f, f))
+                .distinct()
+                .limit(3)
+                .collect(Collectors.joining("、"));
+    }
+
+    private String buildSelfDescriptionKeywords(String userSelfDescription) {
+        if (!StringUtils.hasText(userSelfDescription)) {
+            return "（未填写）";
+        }
+        String normalized = userSelfDescription
+                .replaceAll("[,，。；;！!？?、\\n\\r\\t]+", " ")
+                .replaceAll("\\s+", " ")
+                .trim();
+        if (normalized.isEmpty()) {
+            return "（未填写）";
+        }
+        LinkedHashSet<String> uniq = new LinkedHashSet<>();
+        for (String token : normalized.split(" ")) {
+            String t = token.trim();
+            if (t.length() >= 2 && t.length() <= 12) {
+                uniq.add(t);
+            }
+            if (uniq.size() >= 6) {
+                break;
+            }
+        }
+        return uniq.isEmpty() ? normalized : String.join("、", uniq);
+    }
+
+    private String buildProfileRiskSummary(UserHealthProfile profile) {
+        if (profile == null) {
+            return "（无健康档案）";
+        }
+        List<String> parts = new ArrayList<>();
+        if (StringUtils.hasText(profile.getAllergies())) {
+            parts.add("过敏史:" + profile.getAllergies());
+        }
+        if (StringUtils.hasText(profile.getMedicalHistory())) {
+            parts.add("病史:" + profile.getMedicalHistory());
+        }
+        if (profile.getBmi() != null) {
+            parts.add("BMI:" + profile.getBmi());
+        }
+        if (StringUtils.hasText(profile.getHealthGoals())) {
+            parts.add("目标:" + profile.getHealthGoals());
+        }
+        if (parts.isEmpty()) {
+            return "（无高风险信息）";
+        }
+        return String.join("；", parts);
+    }
+
+    private String buildRotationHint(Long userId, String phase) {
+        String[] analysisStyles = {
+                "先证据后结论，再给优先级。",
+                "先冲突解释再落地建议，避免重复措辞。",
+                "先时令影响再体质要点，最后给执行顺序。"
+        };
+        String[] planStyles = {
+                "饮食偏温补+步行耐力+基础穴位按揉+固定睡眠窗。",
+                "饮食偏清润+拉伸与低冲击+按压轮换穴位+午晚节律管理。",
+                "饮食偏健脾祛湿+间歇活动+穴位交替+睡前放松流程。"
+        };
+        int idx = Math.floorMod(Objects.hash(userId == null ? 0L : userId, phase == null ? "" : phase), 3);
+        if ("analysis".equalsIgnoreCase(phase)) {
+            return analysisStyles[idx];
+        }
+        return planStyles[idx];
+    }
+
     /**
      * 与前端解析约定一致的 JSON 形态（仅通过提示词约束模型输出，不增加业务代码）。
      */
@@ -514,6 +620,22 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
         prompt.append("- 根对象仅含 plans 键；plans 为长度恰好 4 的数组。\n");
         prompt.append("- 按顺序：第 1 条 planType=DIET，第 2 条 EXERCISE，第 3 条 ACUPOINT，第 4 条 SLEEP（全大写）。\n");
         prompt.append("- 每条必须含：planType、planName、description、frequency（仅 DAILY 或 WEEKLY）、targetContent、duration（正整数天数）；禁止缺键、禁止嵌套子对象。\n\n");
+    }
+
+    /** 通用：减少模板化与空泛语句 */
+    private void appendAntiTemplateConstraints(StringBuilder prompt) {
+        prompt.append("# 去模板化约束\n");
+        prompt.append("- 禁止空泛表述：如“规律作息”“适量运动”“均衡饮食”不得单独成句，必须落到可执行动作。\n");
+        prompt.append("- 每个核心段落至少引用 1 个输入证据锚点（舌象特征/体质分值/用户自述/档案风险中的任意项）。\n");
+        prompt.append("- 同一输出内不得出现同义改写重复句；若语义相近，必须改为替代动作并说明差异。\n\n");
+    }
+
+    /** 第二步计划专用：可量化 + 去重 */
+    private void appendPlanQuantAndDedupConstraints(StringBuilder prompt) {
+        prompt.append("# 可执行与去重约束\n");
+        prompt.append("- 每条计划必须包含可量化动作（次数/时长/时间窗/频率至少 2 项）。\n");
+        prompt.append("- 四条计划的 description 与 targetContent 禁止同义重复；动作类型需互补。\n");
+        prompt.append("- 若与“已生成辨证报告”内容高度相似，必须给出替代动作 A/B。\n\n");
     }
 
     @Override
@@ -619,7 +741,14 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
         prompt.append("1. 只输出一个合法 JSON 对象，键名用英文，正文用中文。\n");
         prompt.append("2. 必须包含 disclaimer：\"以上建议仅供参考，严重不适请及时就医。\"\n");
         prompt.append("3. 不要输出 plans 键。\n\n");
+        appendAntiTemplateConstraints(prompt);
+        prompt.append("# 轮换提示（用于跨次降重）\n");
+        prompt.append("- 本次推荐写作风格：").append(buildRotationHint(userId, "analysis")).append("\n");
+        prompt.append("- 避免复用近期历史摘要中的高频句式，若语义接近请改写为新动作。\n\n");
         appendStructuredFieldContract(prompt);
+        prompt.append("# analysis 写作要求\n");
+        prompt.append("- analysis 必须按“1.证据归纳 2.冲突解释 3.调理优先级”输出；每一点都要对应输入证据。\n");
+        prompt.append("- 如自述与舌象/分值存在不一致，必须在第2点给出至少1种合理解释与稳妥建议。\n\n");
         prompt.append("# Output Format（示例占位须换成真实辨证内容）\n");
         prompt.append("{\n");
         prompt.append("  \"analysis\": \"...\",\n");
@@ -651,11 +780,24 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
         prompt.append("# Context\n");
         prompt.append("- 主导体质: ").append(primaryType).append("\n");
         prompt.append("- 当前时令: ").append(season).append("\n\n");
+        prompt.append("## 结构化输入快照（用于个体化约束）\n");
+        prompt.append("- top2体质及分差: ").append(buildTopConstitutionSummary(scores)).append("\n");
+        prompt.append("- 舌象高置信特征: ").append(buildTongueFeatureSummary(tongueFeatures)).append("\n");
+        prompt.append("- 用户自述关键词: ").append(buildSelfDescriptionKeywords(userSelfDescription)).append("\n");
+        prompt.append("- 档案风险约束: ").append(buildProfileRiskSummary(profile)).append("\n\n");
         prompt.append("## 已生成的辨证报告（须与此保持一致，勿自相矛盾）\n");
         prompt.append(priorReportContext != null ? priorReportContext : "（无）").append("\n\n");
         prompt.append("# Task（第二步：仅输出计划）\n");
         prompt.append("只输出一个 JSON 对象，且根对象仅有 \"plans\" 一个键。\n");
         appendPlansArrayContract(prompt);
+        appendAntiTemplateConstraints(prompt);
+        appendPlanQuantAndDedupConstraints(prompt);
+        prompt.append("# 轮换提示（用于跨次降重）\n");
+        prompt.append("- 本次计划动作风格建议：").append(buildRotationHint(userId, "plans")).append("\n");
+        prompt.append("- 优先选择与“近期历史输出摘要”不同的动作组合。\n\n");
+        prompt.append("# 风险约束\n");
+        prompt.append("- 必须根据“档案风险约束”规避不适宜食材或动作；若有替代方案，写入 targetContent。\n");
+        prompt.append("- 每条计划都要体现“为何适配当前体质与季节”的短说明（放在 description 内）。\n\n");
         prompt.append("# Output Format\n");
         prompt.append("{\"plans\":[\n");
         prompt.append("  {\"planType\":\"DIET\",\"planName\":\"...\",\"description\":\"...\",\"frequency\":\"DAILY\",\"targetContent\":\"...\",\"duration\":30},\n");
@@ -670,7 +812,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
         try {
             List<ChatMessage> messages = new ArrayList<>();
             messages.add(new ChatMessage(ChatMessageRole.SYSTEM.value(),
-                    "你是一位专业的中医健康顾问。JSON 中 acupoints 的每一项必须是含 name、location、effect 三个键的对象（禁止字符串元素）；diet 必须是 recommend/avoid 两数组；plans 若出现则须 4 条且 planType 依次为 DIET、EXERCISE、ACUPOINT、SLEEP。字段值用中文。输出合法完整 JSON，勿用 Markdown 代码围栏。"));
+                    "你是一位专业的中医健康顾问。JSON 中 acupoints 的每一项必须是含 name、location、effect 三个键的对象（禁止字符串元素）；diet 必须是 recommend/avoid 两数组；plans 若出现则须 4 条且 planType 依次为 DIET、EXERCISE、ACUPOINT、SLEEP。字段值用中文。输出合法完整 JSON，勿用 Markdown 代码围栏。禁止模板化套话，禁止同义重复句，建议必须可执行且可量化。"));
             messages.add(new ChatMessage(ChatMessageRole.USER.value(), userPrompt));
             ChatCompletionRequest request = ChatCompletionRequest.builder()
                     .model(deepSeekConfig.getModel())

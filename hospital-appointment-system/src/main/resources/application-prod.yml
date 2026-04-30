@@ -1,25 +1,25 @@
 # 生产环境配置
 spring:
-  # 数据源配置
+  # 数据源配置（即使 Nacos 配置为空，也能通过环境变量兜底启动）
   datasource:
     type: com.alibaba.druid.pool.DruidDataSource
+    driver-class-name: ${SPRING_DATASOURCE_DRIVER_CLASS_NAME:com.mysql.cj.jdbc.Driver}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/tcm_health_system?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
     druid:
-      driver-class-name: com.mysql.cj.jdbc.Driver
-      url: jdbc:mysql://your-prod-host:3306/hospital_appointment_system?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=Asia/Shanghai
-      username: prod_user
-      password: prod_password
-      initial-size: 10
-      min-idle: 10
-      max-active: 50
-      max-wait: 60000
+      initial-size: ${SPRING_DATASOURCE_DRUID_INITIAL_SIZE:10}
+      min-idle: ${SPRING_DATASOURCE_DRUID_MIN_IDLE:10}
+      max-active: ${SPRING_DATASOURCE_DRUID_MAX_ACTIVE:50}
+      max-wait: ${SPRING_DATASOURCE_DRUID_MAX_WAIT:60000}
 
   # Redis配置
   redis:
-    host: your-redis-host
-    port: 6379
-    password: your-redis-password
-    database: 0
-    timeout: 5000
+    host: ${SPRING_REDIS_HOST:redis}
+    port: ${SPRING_REDIS_PORT:6379}
+    password: ${SPRING_REDIS_PASSWORD:redis}
+    database: ${SPRING_REDIS_DATABASE:0}
+    timeout: ${SPRING_REDIS_TIMEOUT:5000}
 
   # Jackson配置
   jackson:
