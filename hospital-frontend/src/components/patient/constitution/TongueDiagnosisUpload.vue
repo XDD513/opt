@@ -6,10 +6,11 @@
     <!-- 上传 / 拍照：同一区域切换，无底栏抽屉 -->
     <div v-if="!result" class="tongue-upload-zone">
       <!-- 无 getUserMedia 时（如 HTTP 非安全上下文）用原生 capture 调起系统相机 / 相册 -->
+      <!-- accept 用 image/*：配合 capture 在多数手机上优先调起相机；窄 accept 易变成「仅相册」 -->
       <input
         ref="nativeCaptureInputRef"
         type="file"
-        accept="image/jpeg,image/png"
+        accept="image/*"
         capture="user"
         class="native-capture-input"
         aria-hidden="true"
@@ -193,6 +194,26 @@ const nativeCaptureInputRef = ref(null)
 
 function hasGetUserMedia() {
   return typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia
+}
+
+/** 手机端「拍照上传」优先走系统相机意图；桌面端仍用网页内 getUserMedia，体验更稳定 */
+function shouldPreferNativeCameraOnPhotoClick() {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  const padOs =
+    navigator.platform === 'MacIntel' && typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 1
+  return (
+    /iPhone|iPod|iPad|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua) ||
+    padOs
+  )
+}
+
+function triggerNativeCaptureInput() {
+  const input = nativeCaptureInputRef.value
+  if (input) {
+    input.value = ''
+    input.click()
+  }
 }
 
 const showHttpsCameraHint = computed(() => {
@@ -403,15 +424,15 @@ function openCameraInline() {
 }
 
 function onPhotoUploadClick() {
+  if (shouldPreferNativeCameraOnPhotoClick()) {
+    triggerNativeCaptureInput()
+    return
+  }
   if (hasGetUserMedia()) {
     openCameraInline()
     return
   }
-  const input = nativeCaptureInputRef.value
-  if (input) {
-    input.value = ''
-    input.click()
-  }
+  triggerNativeCaptureInput()
 }
 
 function onNativeCaptureChange(ev) {
