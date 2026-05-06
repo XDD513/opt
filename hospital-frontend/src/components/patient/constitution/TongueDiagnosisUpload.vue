@@ -5,6 +5,17 @@
 
     <!-- 上传 / 拍照：同一区域切换，无底栏抽屉 -->
     <div v-if="!result" class="tongue-upload-zone">
+      <!-- 无 getUserMedia 时（如 HTTP 非安全上下文）用原生 capture 调起系统相机 / 相册 -->
+      <input
+        ref="nativeCaptureInputRef"
+        type="file"
+        accept="image/jpeg,image/png"
+        capture="user"
+        class="native-capture-input"
+        aria-hidden="true"
+        tabindex="-1"
+        @change="onNativeCaptureChange"
+      />
       <el-upload
         v-if="!cameraInlineActive"
         class="upload-demo"
@@ -23,21 +34,25 @@
             支持 jpg/png 文件，大小不超过 5MB。请在自然光下拍摄舌头照片。
           </div>
           <p v-if="showHttpsCameraHint" class="https-camera-hint">
-            网页拍照需要 HTTPS 或 localhost；内网 IP 部署请配置 HTTPS，否则请使用拖拽或点击上传。
+            网页实时取景需要 HTTPS 或 localhost；当前环境可使用下方「拍照上传」调起系统相机，或拖拽 / 点击上传已有照片。
           </p>
-          <div v-if="hasGetUserMedia" class="upload-extra-actions" @click.stop>
-            <el-button
-              type="primary"
-              plain
-              size="small"
-              :icon="Camera"
-              @click="openCameraInline"
-            >
-              拍照上传
-            </el-button>
-          </div>
         </template>
       </el-upload>
+      <div
+        v-if="!cameraInlineActive"
+        class="upload-extra-actions upload-extra-actions--below"
+        @click.stop
+      >
+        <el-button
+          type="primary"
+          plain
+          size="small"
+          :icon="Camera"
+          @click="onPhotoUploadClick"
+        >
+          拍照上传
+        </el-button>
+      </div>
 
       <div v-else class="camera-inline-panel">
         <div class="camera-inline-header">
@@ -181,10 +196,11 @@ const cameraError = ref('')
 const capturedBlob = ref(null)
 const capturedPreviewUrl = ref(null)
 const mediaStream = ref(null)
+const nativeCaptureInputRef = ref(null)
 
-const hasGetUserMedia = computed(
-  () => typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia
-)
+function hasGetUserMedia() {
+  return typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia
+}
 
 const showHttpsCameraHint = computed(() => {
   if (typeof window === 'undefined') return false
@@ -387,10 +403,30 @@ watch(cameraInlineActive, async (open) => {
 
 function openCameraInline() {
   if (!navigator.mediaDevices?.getUserMedia) {
-    ElMessage.warning('当前环境不支持网页调起摄像头，请使用拖拽或点击上传。')
+    ElMessage.warning('当前环境不支持网页实时取景，请使用下方拍照上传（系统相机）或文件上传。')
     return
   }
   cameraInlineActive.value = true
+}
+
+function onPhotoUploadClick() {
+  if (hasGetUserMedia()) {
+    openCameraInline()
+    return
+  }
+  const input = nativeCaptureInputRef.value
+  if (input) {
+    input.value = ''
+    input.click()
+  }
+}
+
+function onNativeCaptureChange(ev) {
+  const input = ev.target
+  const file = input?.files?.[0]
+  if (input) input.value = ''
+  if (!file) return
+  handleImageFile(file)
 }
 
 function closeCameraInline() {
@@ -518,6 +554,21 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 8px;
   margin-top: 10px;
+}
+
+.upload-extra-actions--below {
+  justify-content: center;
+  margin-top: 12px;
+}
+
+.native-capture-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  pointer-events: none;
 }
 
 .https-camera-hint {
