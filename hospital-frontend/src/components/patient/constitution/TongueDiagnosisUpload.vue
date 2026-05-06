@@ -60,14 +60,6 @@
           <el-button type="info" link size="small" @click="closeCameraInline">返回上传</el-button>
         </div>
         <div class="camera-inline-body">
-          <p
-            v-if="cameraPhase === 'live' && !cameraError"
-            class="camera-hint"
-          >
-            {{ cameraStarting ? '请允许浏览器使用摄像头…' : '自然光下放松，将舌头置于椭圆框内' }}
-          </p>
-          <p v-else-if="cameraPhase === 'preview'" class="camera-hint">预览无误后上传；可重拍更换</p>
-
           <div class="camera-stage">
             <template v-if="cameraPhase === 'live'">
               <div class="camera-viewport">
@@ -78,11 +70,12 @@
                   playsinline
                   muted
                 />
-                <template v-if="!cameraStarting && !cameraError">
-                  <div class="camera-dim-mask" aria-hidden="true" />
-                  <div class="camera-guide-ring" aria-hidden="true" />
-                </template>
-                <div v-if="cameraStarting" class="camera-loading camera-overlay">正在请求相机权限…</div>
+                <div
+                  v-if="cameraStarting"
+                  class="camera-loading camera-overlay"
+                  role="status"
+                  aria-busy="true"
+                />
                 <p v-else-if="cameraError" class="camera-error camera-overlay camera-overlay--solid">{{ cameraError }}</p>
               </div>
             </template>
@@ -624,18 +617,6 @@ onBeforeUnmount(() => {
   box-sizing: border-box;
 }
 
-.camera-hint {
-  flex-shrink: 0;
-  width: 100%;
-  max-width: 36em;
-  margin: 0 auto;
-  padding: 0 8px;
-  text-align: center;
-  font-size: 13px;
-  line-height: 1.55;
-  color: #64748b;
-}
-
 .camera-stage {
   flex: 0 0 auto;
   display: flex;
@@ -679,45 +660,6 @@ onBeforeUnmount(() => {
   height: 100%;
   object-fit: contain;
   background: #0f172a;
-}
-
-/* 椭圆外暗角：mask 中心 alpha=0 透出画面，外侧 alpha=1 显示遮罩 */
-.camera-dim-mask {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  pointer-events: none;
-  background: rgba(2, 6, 23, 0.58);
-  -webkit-mask-image: radial-gradient(
-    ellipse 70% 48% at 50% 44%,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0) 35%,
-    rgba(0, 0, 0, 1) 38%,
-    rgba(0, 0, 0, 1) 100%
-  );
-  mask-image: radial-gradient(
-    ellipse 70% 48% at 50% 44%,
-    rgba(0, 0, 0, 0) 0%,
-    rgba(0, 0, 0, 0) 35%,
-    rgba(0, 0, 0, 1) 38%,
-    rgba(0, 0, 0, 1) 100%
-  );
-}
-
-.camera-guide-ring {
-  position: absolute;
-  left: 50%;
-  top: 44%;
-  z-index: 3;
-  width: 70%;
-  height: 42%;
-  transform: translate(-50%, -50%);
-  border: 2px solid rgba(255, 255, 255, 0.88);
-  border-radius: 50%;
-  pointer-events: none;
-  box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.25) inset,
-    0 0 20px rgba(255, 255, 255, 0.15);
 }
 
 .camera-overlay {
