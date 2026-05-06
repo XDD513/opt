@@ -2,6 +2,7 @@ package com.hospital.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hospital.common.constant.CacheConstants;
 import com.hospital.config.DeepSeekConfig;
@@ -24,8 +25,10 @@ import com.theokanning.openai.completion.chat.ChatMessageRole;
 import com.theokanning.openai.service.OpenAiService;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Interceptor;
+import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
+import okhttp3.RequestBody;
 import okhttp3.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -36,7 +39,10 @@ import retrofit2.converter.jackson.JacksonConverterFactory;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -70,6 +76,8 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
 
     private OpenAiService openAiService;
     private OkHttpClient okHttpClient;
+    /** 与 Retrofit 共用配置，用于 SSE 请求体序列化与 data 行解析 */
+    private ObjectMapper chatJsonMapper;
 
     private static final int DEFAULT_RECOMMENDATION_LIMIT = 6;
     private static final int CONTENT_CANDIDATE_LIMIT = 200;
@@ -104,6 +112,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
                 ObjectMapper retrofitObjectMapper = new ObjectMapper();
                 retrofitObjectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
                 retrofitObjectMapper.configure(DeserializationFeature.FAIL_ON_IGNORED_PROPERTIES, false);
+                this.chatJsonMapper = retrofitObjectMapper;
 
                 // 创建 Retrofit 实例，使用 DeepSeek 的 API 地址
                 Retrofit retrofit = new Retrofit.Builder()
@@ -156,6 +165,113 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
             log.info("OkHttp客户端已关闭");
         } catch (Exception e) {
             log.warn("关闭OkHttp客户端时出错: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 支持 api-url 为 {@code https://api.deepseek.com} 或 {@code https://api.deepseek.com/v1}，避免重复 {@code /v1/v1}。
+     */
+    private String resolveChatCompletionsEndpoint() {
+        String base = deepSeekConfig.getApiUrl() != null ? deepSeekConfig.getApiUrl().trim() : "";
+        while (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+        if (base.endsWith("/v1")) {
+            return base + "/chat/completions";
+        }
+        return base + "/v1/chat/completions";
+    }
+
+    /**
+     * 解析 DeepSeek/OpenAI 兼容流式 JSON 中的一段文本增量（delta.content 或 message.content）。
+     */
+    private void emitStreamChunkContent(String dataJson, java.util.function.Consumer<String> contentConsumer) throws IOException {
+        JsonNode root = chatJsonMapper.readTree(dataJson);
+        JsonNode choices = root.path("choices");
+        if (!choices.isArray() || choices.size() == 0) {
+            return;
+        }
+        JsonNode choice = choices.get(0);
+        String piece = null;
+        JsonNode delta = choice.path("delta");
+        if (!delta.isMissingNode() && delta.hasNonNull("content")) {
+            piece = delta.get("content").asText();
+        }
+        if (piece == null || piece.isEmpty()) {
+            JsonNode msg = choice.path("message");
+            if (!msg.isMissingNode() && msg.hasNonNull("content")) {
+                piece = msg.get("content").asText();
+            }
+        }
+        if (piece != null && !piece.isEmpty()) {
+            contentConsumer.accept(piece);
+        }
+    }
+
+    /**
+     * 使用 OkHttp 直读 SSE，忽略注释行（如 {@code : keep-alive}），避免 theokanning {@code ResponseBodyCallback} 抛 {@code SSEFormatException}。
+     */
+    private void streamChatCompletionViaHttpSse(ChatCompletionRequest request, java.util.function.Consumer<String> contentConsumer) {
+        if (okHttpClient == null || chatJsonMapper == null) {
+            contentConsumer.accept("{\"error\": \"AI服务未初始化\"}");
+            return;
+        }
+        final String json;
+        try {
+            json = chatJsonMapper.writeValueAsString(request);
+        } catch (Exception e) {
+            log.error("序列化 ChatCompletionRequest 失败", e);
+            contentConsumer.accept("{\"error\": \"请求序列化失败\"}");
+            return;
+        }
+        MediaType jsonMedia = MediaType.parse("application/json; charset=utf-8");
+        Request httpReq = new Request.Builder()
+                .url(resolveChatCompletionsEndpoint())
+                .post(RequestBody.create(json, jsonMedia))
+                .header("Accept", "text/event-stream")
+                .build();
+        try (Response response = okHttpClient.newCall(httpReq).execute()) {
+            if (!response.isSuccessful()) {
+                String err = response.body() != null ? response.body().string() : "";
+                log.error("DeepSeek 流式 HTTP 失败: {} body={}", response.code(),
+                        err.length() > 800 ? err.substring(0, 800) + "..." : err);
+                contentConsumer.accept("{\"error\": \"AI HTTP " + response.code() + "\"}");
+                return;
+            }
+            if (response.body() == null) {
+                contentConsumer.accept("{\"error\": \"AI 响应体为空\"}");
+                return;
+            }
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(response.body().byteStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.isEmpty()) {
+                        continue;
+                    }
+                    if (line.startsWith(":")) {
+                        continue;
+                    }
+                    if (!line.startsWith("data:")) {
+                        continue;
+                    }
+                    String data = line.substring(5).trim();
+                    if (data.isEmpty()) {
+                        continue;
+                    }
+                    if ("[DONE]".equals(data)) {
+                        break;
+                    }
+                    try {
+                        emitStreamChunkContent(data, contentConsumer);
+                    } catch (Exception parseEx) {
+                        log.warn("解析 SSE data 行失败: {}", parseEx.getMessage());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.error("DeepSeek SSE 流读取失败", e);
+            contentConsumer.accept("{\"error\": \"AI 响应异常: " + e.getMessage() + "\"}");
         }
     }
 
@@ -702,19 +818,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
                     .stream(true)
                     .build();
 
-            openAiService.streamChatCompletion(request)
-                    .doOnError(e -> {
-                        log.error("分片调用 AI 失败", e);
-                        contentConsumer.accept("{\"error\": \"AI 响应异常: " + e.getMessage() + "\"}");
-                    })
-                    .blockingForEach(completion -> {
-                        if (completion.getChoices() != null && !completion.getChoices().isEmpty()) {
-                            String content = completion.getChoices().get(0).getMessage().getContent();
-                            if (content != null) {
-                                contentConsumer.accept(content);
-                            }
-                        }
-                    });
+            streamChatCompletionViaHttpSse(request, contentConsumer);
 
         } catch (Exception e) {
             log.error("生成建议失败", e);
@@ -821,19 +925,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
                     .temperature(deepSeekConfig.getTemperature())
                     .stream(true)
                     .build();
-            openAiService.streamChatCompletion(request)
-                    .doOnError(e -> {
-                        log.error("分片调用 AI 失败", e);
-                        contentConsumer.accept("{\"error\": \"AI 响应异常: " + e.getMessage() + "\"}");
-                    })
-                    .blockingForEach(completion -> {
-                        if (completion.getChoices() != null && !completion.getChoices().isEmpty()) {
-                            String content = completion.getChoices().get(0).getMessage().getContent();
-                            if (content != null) {
-                                contentConsumer.accept(content);
-                            }
-                        }
-                    });
+            streamChatCompletionViaHttpSse(request, contentConsumer);
         } catch (Exception e) {
             log.error("生成失败", e);
             contentConsumer.accept("{\"error\": \"生成失败: " + e.getMessage() + "\"}");
@@ -1109,19 +1201,7 @@ public class AiRecommendationServiceImpl implements AiRecommendationService {
                     .stream(true)
                     .build();
 
-            openAiService.streamChatCompletion(request)
-                    .doOnError(e -> {
-                        log.error("生成药膳失败", e);
-                        contentConsumer.accept("{\"error\":\"" + e.getMessage() + "\"}");
-                    })
-                    .blockingForEach(completion -> {
-                        if (completion.getChoices() != null && !completion.getChoices().isEmpty()) {
-                            String content = completion.getChoices().get(0).getMessage().getContent();
-                            if (content != null) {
-                                contentConsumer.accept(content);
-                            }
-                        }
-                    });
+            streamChatCompletionViaHttpSse(request, contentConsumer);
         } catch (Exception e) {
             log.error("生成药膳异常", e);
             contentConsumer.accept("{\"error\":\"" + e.getMessage() + "\"}");
