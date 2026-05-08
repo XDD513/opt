@@ -104,17 +104,22 @@ public class UserServiceImpl implements UserService {
      */
     @Override
     public Result<LoginResponse> login(LoginRequest request, String clientIp) {
+        String ip = clientIp != null ? clientIp.trim() : "";
+        String ipLog = StringUtils.hasText(ip) ? ip : "-";
+
         if (!captchaService.validateAndConsume(request.getCaptchaId(), request.getCaptchaCode())) {
+            log.warn("用户登录验证码错误: username={}, ip={}", request.getUsername(), ipLog);
             return Result.error(ResultCode.PARAM_ERROR.getCode(), "验证码错误");
         }
 
         boolean lockFeatureOn = Boolean.TRUE.equals(
                 systemSettingManager.getBoolean(SystemSettingKeys.SECURITY_LOGIN_LOCK_ENABLED, Boolean.FALSE));
-        String ip = clientIp != null ? clientIp.trim() : "";
         boolean useIpLock = lockFeatureOn && StringUtils.hasText(ip);
 
         if (useIpLock && isIpLoginLocked(ip)) {
             long remainingMinutes = getRemainingIpLockMinutes(ip);
+            log.warn("用户登录被拒绝(IP已锁定): username={}, ip={}, remainingMinutes={}",
+                    request.getUsername(), ip, remainingMinutes);
             String msg = remainingMinutes > 0
                     ? String.format("当前网络环境登录尝试过于频繁，请%d分钟后再试", remainingMinutes)
                     : "当前网络环境暂时无法登录，请稍后再试";
@@ -126,6 +131,7 @@ public class UserServiceImpl implements UserService {
         queryWrapper.eq("username", request.getUsername());
         User user = userMapper.selectOne(queryWrapper);
         if (user == null) {
+            log.warn("用户登录失败(用户不存在): username={}, ip={}", request.getUsername(), ipLog);
             if (useIpLock) {
                 boolean ipLocked = recordIpLoginFailure(ip);
                 if (ipLocked) {
@@ -141,6 +147,8 @@ public class UserServiceImpl implements UserService {
 
         if (isLoginLocked(user.getId())) {
             long remainingMinutes = getRemainingLockMinutes(user.getId());
+            log.warn("用户登录被拒绝(账户已锁定): userId={}, username={}, ip={}, remainingMinutes={}",
+                    user.getId(), user.getUsername(), ipLog, remainingMinutes);
             String msg = remainingMinutes > 0
                     ? String.format("账户已锁定，请%d分钟后再试", remainingMinutes)
                     : "账户暂时被锁定，请稍后再试";
@@ -149,6 +157,7 @@ public class UserServiceImpl implements UserService {
 
         // 2. 验证密码
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            log.warn("用户登录密码错误: userId={}, username={}, ip={}", user.getId(), user.getUsername(), ipLog);
             boolean shouldLockUser = recordLoginFailure(user.getId(), user.getUsername());
             boolean shouldLockIp = false;
             if (useIpLock) {
@@ -178,6 +187,7 @@ public class UserServiceImpl implements UserService {
 
         // 3. 检查账号状态
         if (user.getStatus() == 0) {
+            log.warn("用户登录被拒绝(账号已禁用): userId={}, username={}, ip={}", user.getId(), user.getUsername(), ipLog);
             return Result.error(ResultCode.USER_ACCOUNT_DISABLED);
         }
 
@@ -237,7 +247,7 @@ public class UserServiceImpl implements UserService {
             log.warn("更新用户登录统计失败: userId={}, error={}", user.getId(), e.getMessage());
         }
 
-        log.info("用户登录成功: userId={}, username={}", user.getId(), user.getUsername());
+        log.info("用户登录成功: userId={}, username={}, ip={}", user.getId(), user.getUsername(), ipLog);
         return Result.success("登录成功", response);
     }
 

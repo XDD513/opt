@@ -13,6 +13,7 @@ import com.hospital.util.ClientIpUtil;
 import com.hospital.util.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.util.StringUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -50,8 +51,9 @@ public class UserController {
     @RateLimit(key = "user-login", limit = 20, windowSeconds = 60, perIp = true, perUser = false)
     @PostMapping("/login")
     public Result<LoginResponse> login(@Validated @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
-        log.info("用户登录请求: username={}", request.getUsername());
-        return userService.login(request, ClientIpUtil.resolve(httpRequest));
+        String clientIp = ClientIpUtil.resolve(httpRequest);
+        log.info("用户登录请求: username={}, ip={}", request.getUsername(), StringUtils.hasText(clientIp) ? clientIp : "-");
+        return userService.login(request, clientIp);
     }
 
     /**
@@ -71,8 +73,10 @@ public class UserController {
     // TODO @RateLimit(key = "user-register", limit = 5, windowSeconds = 600, perIp = true, perUser = false)
     @RateLimit(key = "user-register", limit = 5, windowSeconds = 600, perIp = true, perUser = false)
     @PostMapping("/register")
-    public Result<Void> register(@Validated @RequestBody RegisterRequest request) {
-        log.info("用户注册请求: username={}, phone={}", request.getUsername(), request.getPhone());
+    public Result<Void> register(@Validated @RequestBody RegisterRequest request, HttpServletRequest httpRequest) {
+        String clientIp = ClientIpUtil.resolve(httpRequest);
+        log.info("用户注册请求: username={}, phone={}, ip={}", request.getUsername(), request.getPhone(),
+                StringUtils.hasText(clientIp) ? clientIp : "-");
         return userService.register(request);
     }
 
