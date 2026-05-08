@@ -23,10 +23,18 @@ export function exportOperationLogs(params) {
   })
 }
 
-// 获取系统设置
+// 获取系统设置（管理端全量，需管理员权限）
 export function getSystemSettings() {
   return request({
     url: '/system/settings',
+    method: 'get'
+  })
+}
+
+// 公开范围配置：已登录任意角色可访问，仅 basic + notification（无 security、email）
+export function getPublicSystemSettings() {
+  return request({
+    url: '/system/settings/public',
     method: 'get'
   })
 }

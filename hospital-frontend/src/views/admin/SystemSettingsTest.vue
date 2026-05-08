@@ -6,7 +6,7 @@
       type="info"
       class="mt16"
       show-icon
-      description="该页面用于快速对比数据库 system_config 与前端运行时配置 /api/config 的数据差异，以确认管理员保存配置后是否已经在各端生效。"
+      description="该页面用于快速对比数据库 system_config 与前端运行时配置 /api/config 的数据差异，以确认管理员保存配置后是否已经在各端生效。另可校验 GET /api/system/settings/public 是否不包含 security/email 分组。"
     />
 
     <el-row :gutter="16" class="mt16">
@@ -66,6 +66,36 @@
     <el-card shadow="never" class="mt16">
       <template #header>
         <div class="card-header">
+          <span>公开范围接口（GET /api/system/settings/public）</span>
+          <div class="actions">
+            <el-button type="primary" size="small" :loading="publicLoading" @click="refreshPublicConfig">
+              <el-icon><Refresh /></el-icon>
+              刷新
+            </el-button>
+          </div>
+        </div>
+      </template>
+      <el-alert
+        :type="publicLeakCheckOk ? 'success' : 'warning'"
+        :closable="false"
+        show-icon
+        class="mb16"
+      >
+        <template #title>
+          <span v-if="publicData">{{ publicLeakCheckOk ? '未返回 security / email 分组（符合预期）' : '响应中仍含 security 或 email，请检查后端公开接口过滤' }}</span>
+          <span v-else>请点击刷新加载公开接口数据</span>
+        </template>
+      </el-alert>
+      <el-descriptions v-if="publicFetchedAt" :column="1" border class="mb16">
+        <el-descriptions-item label="最近刷新">{{ formatTime(publicFetchedAt) }}</el-descriptions-item>
+      </el-descriptions>
+      <h4>响应 JSON</h4>
+      <pre class="json-viewer">{{ prettify(publicData) }}</pre>
+    </el-card>
+
+    <el-card shadow="never" class="mt16">
+      <template #header>
+        <div class="card-header">
           <span>差异对比</span>
           <el-button type="primary" size="small" :loading="isRefreshing" @click="refreshAll">
             <el-icon><Refresh /></el-icon>
@@ -116,7 +146,7 @@ import { computed, inject, onMounted, ref } from 'vue'
 import dayjs from 'dayjs'
 import message from '@/plugins/message'
 import { Refresh } from '@element-plus/icons-vue'
-import { getRuntimeConfig, getSystemSettings } from '@/api/system'
+import { getRuntimeConfig, getSystemSettings, getPublicSystemSettings } from '@/api/system'
 import { getAppConfig } from '@/config/runtimeConfig'
 
 const runtimeData = ref(getAppConfig())
@@ -127,7 +157,16 @@ const dbData = ref(null)
 const dbLoading = ref(false)
 const dbFetchedAt = ref(null)
 
-const isRefreshing = computed(() => runtimeLoading.value || dbLoading.value)
+const publicData = ref(null)
+const publicLoading = ref(false)
+const publicFetchedAt = ref(null)
+
+const publicLeakCheckOk = computed(() => {
+  if (!publicData.value || typeof publicData.value !== 'object') return false
+  return !publicData.value.security && !publicData.value.email
+})
+
+const isRefreshing = computed(() => runtimeLoading.value || dbLoading.value || publicLoading.value)
 
 const runtimeName = computed(() => runtimeData.value?.systemInfo?.name || '—')
 const runtimeVersion = computed(() => runtimeData.value?.systemInfo?.version || '—')
@@ -315,8 +354,23 @@ const refreshDbConfig = async () => {
   }
 }
 
+const refreshPublicConfig = async () => {
+  publicLoading.value = true
+  try {
+    const res = await getPublicSystemSettings()
+    publicData.value = res.data
+    publicFetchedAt.value = new Date()
+    message.success('公开范围设置已刷新')
+  } catch (error) {
+    message.error('获取公开设置失败')
+    publicData.value = null
+  } finally {
+    publicLoading.value = false
+  }
+}
+
 const refreshAll = async () => {
-  await Promise.all([refreshRuntimeConfig(), refreshDbConfig()])
+  await Promise.all([refreshRuntimeConfig(), refreshDbConfig(), refreshPublicConfig()])
 }
 
 const formatTime = (time) => {
