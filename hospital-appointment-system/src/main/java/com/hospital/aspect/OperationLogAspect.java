@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hospital.annotation.OperationLog;
 import com.hospital.service.SystemService;
 import com.hospital.util.JwtUtil;
+import com.hospital.util.LogSanitizer;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
@@ -130,7 +131,7 @@ public class OperationLogAspect {
                             filteredArgs[i] = args[i];
                         }
                     }
-                    String params = objectMapper.writeValueAsString(filteredArgs);
+                    String params = objectMapper.writeValueAsString(LogSanitizer.redact(objectMapper, filteredArgs));
                     // 限制参数长度
                     if (params.length() > 2000) {
                         params = params.substring(0, 2000) + "...";
@@ -179,7 +180,7 @@ public class OperationLogAspect {
 
             // 记录响应数据
             try {
-                String responseData = objectMapper.writeValueAsString(result);
+                String responseData = objectMapper.writeValueAsString(LogSanitizer.redact(objectMapper, result));
                 // 限制响应数据长度
                 if (responseData.length() > 2000) {
                     responseData = responseData.substring(0, 2000) + "...";
