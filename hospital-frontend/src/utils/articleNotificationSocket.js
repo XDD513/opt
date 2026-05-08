@@ -1,19 +1,26 @@
-import SockJS from 'sockjs-client'
 import { Client } from '@stomp/stompjs'
-import { getAppConfig } from '@/config/runtimeConfig'
+
+/**
+ * 使用 STOMP 直连后端的 /ws/native（原生 WebSocket），避免 SockJS 的 xhr / xhr_streaming
+ * 在 Nginx 反代下产生大量短轮询与偶发失败；与 WebSocketConfig 中 /ws/native 端点一致。
+ */
+function buildNativeStompBrokerUrl(token) {
+  if (typeof window === 'undefined' || !token) return null
+  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${protocol}//${window.location.host}/ws/native?token=${encodeURIComponent(token)}`
+}
 
 export function createArticleNotificationSocket({ token, onMessage, onError } = {}) {
   let client = null
 
   const connect = () => {
     if (!token || client?.connected) return
-    const config = getAppConfig()
-    const wsBaseUrl = config?.wsBaseUrl || '/ws'
-    const wsUrl = `${wsBaseUrl}?token=${encodeURIComponent(token)}`
+    const brokerURL = buildNativeStompBrokerUrl(token)
+    if (!brokerURL) return
 
     client = new Client({
-      webSocketFactory: () => new SockJS(wsUrl),
-      reconnectDelay: 5000,
+      brokerURL,
+      reconnectDelay: 10000,
       heartbeatIncoming: 10000,
       heartbeatOutgoing: 10000
     })
@@ -53,4 +60,3 @@ export function createArticleNotificationSocket({ token, onMessage, onError } = 
 
   return { connect, disconnect }
 }
-

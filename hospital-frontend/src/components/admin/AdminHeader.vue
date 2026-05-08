@@ -58,7 +58,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, inject, ref } from 'vue'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import message from '@/plugins/message'
@@ -123,49 +123,6 @@ const refreshUserInfo = async () => {
     }
   } catch (error) {
     // 静默失败
-  }
-}
-
-const connectNotificationSocket = () => {
-  const token = userStore.token
-  if (!token) return
-  if (stompClient?.connected) {
-    return
-  }
-
-  // 获取配置的 WebSocket URL
-  const config = getAppConfig()
-  const wsBaseUrl = config?.wsBaseUrl || '/ws'
-  const wsUrl = `${wsBaseUrl}?token=${encodeURIComponent(token)}`
-  
-  stompClient = new Client({
-    webSocketFactory: () => new SockJS(wsUrl),
-    reconnectDelay: 5000,
-    heartbeatIncoming: 10000,
-    heartbeatOutgoing: 10000
-  })
-
-  stompClient.onConnect = () => {}
-
-  stompClient.onStompError = (frame) => {
-    // 静默失败
-  }
-
-  stompClient.onWebSocketError = (event) => {
-    // 静默失败
-  }
-
-  stompClient.activate()
-}
-
-const disconnectNotificationSocket = () => {
-  if (stompClient) {
-    try {
-      stompClient.deactivate()
-    } catch (error) {
-      // 静默失败
-    }
-    stompClient = null
   }
 }
 
