@@ -186,7 +186,9 @@ public class SystemController {
                 case "security.min_password_length": return "minPasswordLength";
                 case "security.login_lock_enabled": return "loginLockEnabled";
                 case "security.max_login_attempts": return "maxLoginAttempts";
+                case "security.max_login_attempts_ip": return "maxLoginAttemptsIp";
                 case "security.lock_duration": return "lockDuration";
+                case "security.lock_duration_ip": return "lockDurationIp";
                 case "security.session_timeout": return "sessionTimeout";
             }
         }
@@ -304,7 +306,9 @@ public class SystemController {
                 case "minPasswordLength": return "security.min_password_length";
                 case "loginLockEnabled": return "security.login_lock_enabled";
                 case "maxLoginAttempts": return "security.max_login_attempts";
+                case "maxLoginAttemptsIp": return "security.max_login_attempts_ip";
                 case "lockDuration": return "security.lock_duration";
+                case "lockDurationIp": return "security.lock_duration_ip";
                 case "sessionTimeout": return "security.session_timeout";
             }
         }

@@ -104,7 +104,11 @@ public class FrontendRuntimeConfig {
         private Integer minPasswordLength;
         private Boolean loginLockEnabled;
         private Integer maxLoginAttempts;
+        /** 同一 IP 失败锁定阈值；未配置时与 maxLoginAttempts 相同 */
+        private Integer maxLoginAttemptsIp;
         private Integer lockDurationMinutes;
+        /** IP 锁定时长（分钟）；未配置时与 lockDurationMinutes 相同 */
+        private Integer lockDurationMinutesIp;
         private Integer sessionTimeoutMinutes;
     }
 

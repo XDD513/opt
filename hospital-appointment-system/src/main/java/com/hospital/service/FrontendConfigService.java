@@ -64,8 +64,14 @@ public class FrontendConfigService {
         FrontendRuntimeConfig.SecurityConfig securityConfig = new FrontendRuntimeConfig.SecurityConfig();
         securityConfig.setMinPasswordLength(systemSettingManager.getInteger(SystemSettingKeys.SECURITY_MIN_PASSWORD_LENGTH, 6));
         securityConfig.setLoginLockEnabled(systemSettingManager.getBoolean(SystemSettingKeys.SECURITY_LOGIN_LOCK_ENABLED, Boolean.FALSE));
-        securityConfig.setMaxLoginAttempts(systemSettingManager.getInteger(SystemSettingKeys.SECURITY_MAX_LOGIN_ATTEMPTS, 5));
-        securityConfig.setLockDurationMinutes(systemSettingManager.getInteger(SystemSettingKeys.SECURITY_LOCK_DURATION, 15));
+        int maxLoginAttempts = systemSettingManager.getInteger(SystemSettingKeys.SECURITY_MAX_LOGIN_ATTEMPTS, 5);
+        securityConfig.setMaxLoginAttempts(maxLoginAttempts);
+        securityConfig.setMaxLoginAttemptsIp(
+                systemSettingManager.getInteger(SystemSettingKeys.SECURITY_MAX_LOGIN_ATTEMPTS_IP, maxLoginAttempts));
+        int lockDurationMinutes = systemSettingManager.getInteger(SystemSettingKeys.SECURITY_LOCK_DURATION, 15);
+        securityConfig.setLockDurationMinutes(lockDurationMinutes);
+        securityConfig.setLockDurationMinutesIp(
+                systemSettingManager.getInteger(SystemSettingKeys.SECURITY_LOCK_DURATION_IP, lockDurationMinutes));
         securityConfig.setSessionTimeoutMinutes(systemSettingManager.getInteger(SystemSettingKeys.SECURITY_SESSION_TIMEOUT, 120));
         runtimeConfig.setSecurity(securityConfig);
 

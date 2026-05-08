@@ -31,7 +31,11 @@ public final class SystemSettingKeys {
     public static final String SECURITY_MIN_PASSWORD_LENGTH = "security.min_password_length";
     public static final String SECURITY_LOGIN_LOCK_ENABLED = "security.login_lock_enabled";
     public static final String SECURITY_MAX_LOGIN_ATTEMPTS = "security.max_login_attempts";
+    /** 同一 IP 登录失败锁定阈值；未单独配置时由业务层回退为账户侧「最大失败次数」 */
+    public static final String SECURITY_MAX_LOGIN_ATTEMPTS_IP = "security.max_login_attempts_ip";
     public static final String SECURITY_LOCK_DURATION = "security.lock_duration";
+    /** IP 锁定持续时间（分钟）；未单独配置时回退为账户侧「锁定时间」 */
+    public static final String SECURITY_LOCK_DURATION_IP = "security.lock_duration_ip";
     public static final String SECURITY_SESSION_TIMEOUT = "security.session_timeout";
 
     // ==================== 邮件设置 ====================

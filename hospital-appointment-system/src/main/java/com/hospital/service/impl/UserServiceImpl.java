@@ -639,8 +639,12 @@ public class UserServiceImpl implements UserService {
         if (!Boolean.TRUE.equals(systemSettingManager.getBoolean(SystemSettingKeys.SECURITY_LOGIN_LOCK_ENABLED, Boolean.FALSE))) {
             return false;
         }
-        int maxAttempts = systemSettingManager.getInteger(SystemSettingKeys.SECURITY_MAX_LOGIN_ATTEMPTS, 5);
-        int lockDurationMinutes = systemSettingManager.getInteger(SystemSettingKeys.SECURITY_LOCK_DURATION, 15);
+        int maxUserAttempts = systemSettingManager.getInteger(SystemSettingKeys.SECURITY_MAX_LOGIN_ATTEMPTS, 5);
+        int maxAttempts = systemSettingManager.getInteger(SystemSettingKeys.SECURITY_MAX_LOGIN_ATTEMPTS_IP, maxUserAttempts);
+        maxAttempts = Math.max(1, Math.min(maxAttempts, 100));
+        int lockUserMinutes = systemSettingManager.getInteger(SystemSettingKeys.SECURITY_LOCK_DURATION, 15);
+        int lockDurationMinutes = systemSettingManager.getInteger(SystemSettingKeys.SECURITY_LOCK_DURATION_IP, lockUserMinutes);
+        lockDurationMinutes = Math.max(1, Math.min(lockDurationMinutes, 24 * 60));
         String attemptKey = LOGIN_IP_ATTEMPT_KEY_PREFIX + ip;
         Long attempts = null;
         try {

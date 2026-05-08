@@ -124,15 +124,25 @@
             </el-form-item>
             <el-form-item label="登录失败锁定">
               <el-switch v-model="securitySettings.loginLockEnabled" />
-              <span style="margin-left: 10px; color: #909399;">连续失败后锁定账户</span>
+              <span style="margin-left: 10px; color: #909399;">连续失败后锁定账户与来源 IP（阈值可分别配置）</span>
             </el-form-item>
-            <el-form-item label="最大失败次数">
+            <el-form-item label="账户最大失败次数">
               <el-input-number v-model="securitySettings.maxLoginAttempts" :min="3" :max="10"
                 :disabled="!securitySettings.loginLockEnabled" />
-              <span style="margin-left: 10px; color: #909399;">次</span>
+              <span style="margin-left: 10px; color: #909399;">次（单用户）</span>
             </el-form-item>
-            <el-form-item label="锁定时间">
+            <el-form-item label="账户锁定时长">
               <el-input-number v-model="securitySettings.lockDuration" :min="5" :max="60"
+                :disabled="!securitySettings.loginLockEnabled" />
+              <span style="margin-left: 10px; color: #909399;">分钟</span>
+            </el-form-item>
+            <el-form-item label="IP 最大失败次数">
+              <el-input-number v-model="securitySettings.maxLoginAttemptsIp" :min="3" :max="30"
+                :disabled="!securitySettings.loginLockEnabled" />
+              <span style="margin-left: 10px; color: #909399;">次（同一 IP，可与账户不同）</span>
+            </el-form-item>
+            <el-form-item label="IP 锁定时长">
+              <el-input-number v-model="securitySettings.lockDurationIp" :min="5" :max="120"
                 :disabled="!securitySettings.loginLockEnabled" />
               <span style="margin-left: 10px; color: #909399;">分钟</span>
             </el-form-item>
@@ -386,6 +396,8 @@ const createDefaultSecuritySettings = () => ({
   loginLockEnabled: appConfig?.security?.loginLockEnabled ?? true,
   maxLoginAttempts: appConfig?.security?.maxLoginAttempts ?? 5,
   lockDuration: appConfig?.security?.lockDurationMinutes ?? 15,
+  maxLoginAttemptsIp: appConfig?.security?.maxLoginAttemptsIp ?? appConfig?.security?.maxLoginAttempts ?? 10,
+  lockDurationIp: appConfig?.security?.lockDurationMinutesIp ?? appConfig?.security?.lockDurationMinutes ?? 15,
   sessionTimeout: appConfig?.security?.sessionTimeoutMinutes ?? 120
 })
 const createDefaultEmailSettings = () => ({
@@ -447,7 +459,7 @@ const loadSystemSettings = async () => {
       // 更新各个设置对象
       Object.assign(basicSettings, res.data.basic || {})
       Object.assign(notificationSettings, res.data.notification || {})
-      Object.assign(securitySettings, res.data.security || {})
+      Object.assign(securitySettings, createDefaultSecuritySettings(), res.data.security || {})
       Object.assign(emailSettings, res.data.email || {})
     }
   } catch (error) {

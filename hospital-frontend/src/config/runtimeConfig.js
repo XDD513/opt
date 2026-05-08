@@ -28,7 +28,9 @@ const defaultConfig = {
     minPasswordLength: 6,
     loginLockEnabled: false,
     maxLoginAttempts: 5,
+    maxLoginAttemptsIp: 10,
     lockDurationMinutes: 15,
+    lockDurationMinutesIp: 15,
     sessionTimeoutMinutes: 120
   },
   email: {
@@ -113,7 +115,15 @@ const normalizeConfig = (config = {}) => {
       minPasswordLength: Number.parseInt(config.security?.minPasswordLength ?? defaultConfig.security.minPasswordLength, 10),
       loginLockEnabled: toBoolean(config.security?.loginLockEnabled, defaultConfig.security.loginLockEnabled),
       maxLoginAttempts: Number.parseInt(config.security?.maxLoginAttempts ?? defaultConfig.security.maxLoginAttempts, 10),
+      maxLoginAttemptsIp: Number.parseInt(
+        config.security?.maxLoginAttemptsIp ?? config.security?.maxLoginAttempts ?? defaultConfig.security.maxLoginAttemptsIp,
+        10
+      ),
       lockDurationMinutes: Number.parseInt(config.security?.lockDurationMinutes ?? defaultConfig.security.lockDurationMinutes, 10),
+      lockDurationMinutesIp: Number.parseInt(
+        config.security?.lockDurationMinutesIp ?? config.security?.lockDurationMinutes ?? defaultConfig.security.lockDurationMinutesIp,
+        10
+      ),
       sessionTimeoutMinutes: Number.parseInt(config.security?.sessionTimeoutMinutes ?? defaultConfig.security.sessionTimeoutMinutes, 10)
     },
     email: {
