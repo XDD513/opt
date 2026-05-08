@@ -2,6 +2,8 @@
  * 带验证码的登录（与 acceptance-tests/rec-eval.mjs 逻辑一致，供批量脚本使用）
  */
 const CAPTCHA_WHITELIST = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+/** 与后端 CaptchaService.CODE_LEN 一致 */
+const CAPTCHA_CODE_LEN = 5;
 
 async function ocrCaptchaBuffer(buf) {
   const { createWorker } = await import("tesseract.js");
@@ -47,8 +49,8 @@ async function loginWithCaptcha(base, username, password, timeoutMs, maxAttempts
     const buf = Buffer.from(imageBase64, "base64");
     let raw = await ocrCaptchaBuffer(buf);
     raw = [...raw].filter((ch) => CAPTCHA_WHITELIST.includes(ch)).join("");
-    const captchaCode = raw.slice(0, 4);
-    if (captchaCode.length < 4) continue;
+    const captchaCode = raw.slice(0, CAPTCHA_CODE_LEN);
+    if (captchaCode.length < CAPTCHA_CODE_LEN) continue;
 
     const loginController = new AbortController();
     const loginTimer = setTimeout(() => loginController.abort(), safeTimeout);
@@ -103,8 +105,8 @@ async function registerWithCaptcha(base, userPayload, timeoutMs, maxAttempts = 2
     const buf = Buffer.from(imageBase64, "base64");
     let raw = await ocrCaptchaBuffer(buf);
     raw = [...raw].filter((ch) => CAPTCHA_WHITELIST.includes(ch)).join("");
-    const captchaCode = raw.slice(0, 4);
-    if (captchaCode.length < 4) continue;
+    const captchaCode = raw.slice(0, CAPTCHA_CODE_LEN);
+    if (captchaCode.length < CAPTCHA_CODE_LEN) continue;
 
     const body = {
       ...userPayload,

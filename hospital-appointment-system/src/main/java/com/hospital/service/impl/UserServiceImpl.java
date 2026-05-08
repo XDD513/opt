@@ -96,14 +96,29 @@ public class UserServiceImpl implements UserService {
 
     private static final String LOGIN_ATTEMPT_KEY_PREFIX = "hospital:auth:login:attempts:user:";
     private static final String LOGIN_LOCK_KEY_PREFIX = "hospital:auth:login:lock:user:";
+    private static final String LOGIN_IP_ATTEMPT_KEY_PREFIX = "hospital:auth:login:attempts:ip:";
+    private static final String LOGIN_IP_LOCK_KEY_PREFIX = "hospital:auth:login:lock:ip:";
 
     /**
      * 用户登录
      */
     @Override
-    public Result<LoginResponse> login(LoginRequest request) {
+    public Result<LoginResponse> login(LoginRequest request, String clientIp) {
         if (!captchaService.validateAndConsume(request.getCaptchaId(), request.getCaptchaCode())) {
             return Result.error(ResultCode.PARAM_ERROR.getCode(), "验证码错误");
+        }
+
+        boolean lockFeatureOn = Boolean.TRUE.equals(
+                systemSettingManager.getBoolean(SystemSettingKeys.SECURITY_LOGIN_LOCK_ENABLED, Boolean.FALSE));
+        String ip = clientIp != null ? clientIp.trim() : "";
+        boolean useIpLock = lockFeatureOn && StringUtils.hasText(ip);
+
+        if (useIpLock && isIpLoginLocked(ip)) {
+            long remainingMinutes = getRemainingIpLockMinutes(ip);
+            String msg = remainingMinutes > 0
+                    ? String.format("当前网络环境登录尝试过于频繁，请%d分钟后再试", remainingMinutes)
+                    : "当前网络环境暂时无法登录，请稍后再试";
+            return Result.error(ResultCode.USER_ACCOUNT_DISABLED.getCode(), msg);
         }
 
         // 1. 根据用户名查询用户
@@ -111,6 +126,16 @@ public class UserServiceImpl implements UserService {
         queryWrapper.eq("username", request.getUsername());
         User user = userMapper.selectOne(queryWrapper);
         if (user == null) {
+            if (useIpLock) {
+                boolean ipLocked = recordIpLoginFailure(ip);
+                if (ipLocked) {
+                    long remainingMinutes = getRemainingIpLockMinutes(ip);
+                    String msg = remainingMinutes > 0
+                            ? String.format("当前网络环境登录尝试过于频繁，请%d分钟后再试", remainingMinutes)
+                            : "当前网络环境暂时无法登录，请稍后再试";
+                    return Result.error(ResultCode.USER_ACCOUNT_DISABLED.getCode(), msg);
+                }
+            }
             return Result.error(ResultCode.USER_NOT_FOUND);
         }
 
@@ -124,22 +149,32 @@ public class UserServiceImpl implements UserService {
 
         // 2. 验证密码
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-            // 记录登录失败，并检查是否达到最大失败次数
-            boolean shouldLock = recordLoginFailure(user.getId(), user.getUsername());
-            if (shouldLock) {
-                // 达到最大失败次数，账户已被锁定
+            boolean shouldLockUser = recordLoginFailure(user.getId(), user.getUsername());
+            boolean shouldLockIp = false;
+            if (useIpLock) {
+                shouldLockIp = recordIpLoginFailure(ip);
+            }
+            if (shouldLockUser) {
                 long remainingMinutes = getRemainingLockMinutes(user.getId());
                 String msg = remainingMinutes > 0
                         ? String.format("账户已被锁定，请%d分钟后再试", remainingMinutes)
                         : "账户已被锁定，请稍后再试";
                 return Result.error(ResultCode.USER_ACCOUNT_DISABLED.getCode(), msg);
-            } else {
-                // 未达到最大失败次数，提示密码错误
-                return Result.error(ResultCode.USERNAME_OR_PASSWORD_ERROR);
             }
+            if (shouldLockIp) {
+                long remainingMinutes = getRemainingIpLockMinutes(ip);
+                String msg = remainingMinutes > 0
+                        ? String.format("当前网络环境登录尝试过于频繁，请%d分钟后再试", remainingMinutes)
+                        : "当前网络环境暂时无法登录，请稍后再试";
+                return Result.error(ResultCode.USER_ACCOUNT_DISABLED.getCode(), msg);
+            }
+            return Result.error(ResultCode.USERNAME_OR_PASSWORD_ERROR);
         }
 
         clearLoginFailure(user.getId());
+        if (useIpLock) {
+            clearIpLoginFailure(ip);
+        }
 
         // 3. 检查账号状态
         if (user.getStatus() == 0) {
@@ -556,6 +591,72 @@ public class UserServiceImpl implements UserService {
 
     private void clearLoginFailure(Long userId) {
         String attemptKey = LOGIN_ATTEMPT_KEY_PREFIX + userId;
+        try {
+            redisUtil.delete(attemptKey);
+        } catch (Exception ignored) {}
+    }
+
+    private boolean isIpLoginLocked(String ip) {
+        if (!Boolean.TRUE.equals(systemSettingManager.getBoolean(SystemSettingKeys.SECURITY_LOGIN_LOCK_ENABLED, Boolean.FALSE))) {
+            return false;
+        }
+        String lockKey = LOGIN_IP_LOCK_KEY_PREFIX + ip;
+        try {
+            return Boolean.TRUE.equals(redisUtil.hasKey(lockKey));
+        } catch (Exception e) {
+            log.warn("判断 IP 是否被锁定失败：ip={}, error={}", ip, e.getMessage());
+        }
+        return false;
+    }
+
+    private long getRemainingIpLockMinutes(String ip) {
+        String lockKey = LOGIN_IP_LOCK_KEY_PREFIX + ip;
+        try {
+            Long expireSeconds = redisUtil.getExpire(lockKey);
+            if (expireSeconds != null && expireSeconds > 0) {
+                return (expireSeconds + 59) / 60;
+            }
+        } catch (Exception ignored) {}
+        return 0;
+    }
+
+    /**
+     * 记录某 IP 登录失败次数；与账户锁定共用「最大次数 / 锁定时长」系统配置。
+     *
+     * @return true 表示本次计数后已触发 IP 锁定
+     */
+    private boolean recordIpLoginFailure(String ip) {
+        if (!Boolean.TRUE.equals(systemSettingManager.getBoolean(SystemSettingKeys.SECURITY_LOGIN_LOCK_ENABLED, Boolean.FALSE))) {
+            return false;
+        }
+        int maxAttempts = systemSettingManager.getInteger(SystemSettingKeys.SECURITY_MAX_LOGIN_ATTEMPTS, 5);
+        int lockDurationMinutes = systemSettingManager.getInteger(SystemSettingKeys.SECURITY_LOCK_DURATION, 15);
+        String attemptKey = LOGIN_IP_ATTEMPT_KEY_PREFIX + ip;
+        Long attempts = null;
+        try {
+            attempts = redisUtil.increment(attemptKey, 1);
+            redisUtil.expire(attemptKey, lockDurationMinutes, TimeUnit.MINUTES);
+        } catch (Exception e) {
+            log.warn("记录 IP 登录失败次数异常：ip={}, error={}", ip, e.getMessage());
+            return false;
+        }
+        if (attempts != null && attempts >= maxAttempts) {
+            String lockKey = LOGIN_IP_LOCK_KEY_PREFIX + ip;
+            try {
+                redisUtil.delete(attemptKey);
+                redisUtil.set(lockKey, "IP:LOCKED", lockDurationMinutes, TimeUnit.MINUTES);
+                log.warn("IP 因多次登录失败被锁定：ip={}, attempts={}, lockDuration={}分钟", ip, attempts, lockDurationMinutes);
+                return true;
+            } catch (Exception e) {
+                log.warn("设置 IP 登录锁失败：ip={}, error={}", ip, e.getMessage());
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private void clearIpLoginFailure(String ip) {
+        String attemptKey = LOGIN_IP_ATTEMPT_KEY_PREFIX + ip;
         try {
             redisUtil.delete(attemptKey);
         } catch (Exception ignored) {}

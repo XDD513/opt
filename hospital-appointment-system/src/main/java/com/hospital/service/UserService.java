@@ -18,10 +18,11 @@ public interface UserService {
     /**
      * 用户登录
      *
-     * @param request 登录请求
+     * @param request  登录请求
+     * @param clientIp   客户端 IP（由 Controller 解析；空字符串时不做 IP 维度锁定）
      * @return 登录响应（包含Token）
      */
-    Result<LoginResponse> login(LoginRequest request);
+    Result<LoginResponse> login(LoginRequest request, String clientIp);
 
     /**
      * 刷新访问令牌：使用 refreshToken 换取新的 accessToken（与新的 refreshToken）

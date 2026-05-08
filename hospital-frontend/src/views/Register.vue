@@ -100,7 +100,7 @@
               <el-input
                 v-model="registerForm.captchaCode"
                 placeholder="请输入验证码"
-                maxlength="6"
+                maxlength="8"
                 clearable
                 class="captcha-input"
               />

@@ -9,6 +9,7 @@ import com.hospital.dto.response.UserInfoResponse;
 import com.hospital.dto.response.UserSettingsResponse;
 import com.hospital.service.OssService;
 import com.hospital.service.UserService;
+import com.hospital.util.ClientIpUtil;
 import com.hospital.util.JwtUtil;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,9 +49,9 @@ public class UserController {
     // TODO @RateLimit(key = "user-login", limit = 20, windowSeconds = 60, perIp = true, perUser = false)
     @RateLimit(key = "user-login", limit = 20, windowSeconds = 60, perIp = true, perUser = false)
     @PostMapping("/login")
-    public Result<LoginResponse> login(@Validated @RequestBody LoginRequest request) {
+    public Result<LoginResponse> login(@Validated @RequestBody LoginRequest request, HttpServletRequest httpRequest) {
         log.info("用户登录请求: username={}", request.getUsername());
-        return userService.login(request);
+        return userService.login(request, ClientIpUtil.resolve(httpRequest));
     }
 
     /**

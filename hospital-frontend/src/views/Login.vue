@@ -24,7 +24,7 @@
                   v-model="loginForm.captchaCode"
                   placeholder="验证码"
                   size="large"
-                  maxlength="6"
+                  maxlength="8"
                   clearable
                   class="captcha-input"
                   @keyup.enter="handleLogin"
