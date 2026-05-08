@@ -490,6 +490,8 @@ export function useConstitutionTest() {
     const encToken = encodeURIComponent(token || '')
     const url = `${base || ''}/api/constitution/test/ai-suggestion/stream/${testId}?token=${encToken}&phase=${encodeURIComponent(phase)}`
     const eventSource = new EventSource(url)
+    /** 正常收到 finish 后浏览器仍会触发 EventSource.onerror，禁止据此无限重连 */
+    let sseFinished = false
 
     const cleanup = () => {
       state.isAiLoading = false
@@ -510,6 +512,7 @@ export function useConstitutionTest() {
     }
 
     eventSource.addEventListener('finish', async () => {
+      sseFinished = true
       cleanup()
       setTimeout(async () => {
         try {
@@ -549,12 +552,20 @@ export function useConstitutionTest() {
     })
 
     eventSource.onerror = async () => {
+      if (sseFinished) return
+      const buf = state.streamingAiContent || ''
       cleanup()
+      if (buf.includes('AI HTTP 401') || buf.includes('AI HTTP 403')) {
+        notify.error({
+          title: phase === 'plans' ? '健康计划生成失败' : '深度分析生成失败',
+          message: 'AI 上游鉴权失败（如 DeepSeek API Key）。请检查服务端配置后重试，无需反复刷新页面。'
+        })
+        return
+      }
       try {
         await ensureValidTokenForSse()
         streamAiSuggestion(testId, phase)
       } catch {
-        // ignore
         notify.error({ title: phase === 'plans' ? '健康计划生成失败' : '深度分析生成失败', message: '连接中断或鉴权失败，请稍后重试。' })
       }
     }
@@ -581,17 +592,25 @@ export function useConstitutionTest() {
     state.streamingAiContent = ''
     const url = getRecipePromptStreamUrl(prompt)
     const es = new EventSource(url)
+    let recipeSseFinished = false
     const cleanup = () => { state.isAiLoading = false; state.streamPhase = null; state.runningJobs.recipe = false; es.close() }
     notify.info({ title: '药膳生成', message: '正在生成中，请稍候…' })
     es.onmessage = (e) => { if (e.data) state.streamingAiContent += e.data }
     es.addEventListener('finish', () => {
+      recipeSseFinished = true
       try { state.latestGeneratedRecipeText = (state.streamingAiContent || '').trim() } catch (_) {}
       state.streamingAiContent = ''
       cleanup()
       notify.success({ title: '药膳生成完成', message: '已生成药膳建议。' })
     })
     es.onerror = async () => {
+      if (recipeSseFinished) return
+      const buf = state.streamingAiContent || ''
       cleanup()
+      if (buf.includes('AI HTTP 401') || buf.includes('AI HTTP 403')) {
+        notify.error({ title: '药膳生成失败', message: 'AI 上游鉴权失败，请检查服务端 DeepSeek 等配置。' })
+        return
+      }
       try {
         await ensureValidTokenForSse()
         streamRecipeByPrompt(prompt)
