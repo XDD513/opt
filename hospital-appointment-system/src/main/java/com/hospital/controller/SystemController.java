@@ -84,39 +84,59 @@ public class SystemController {
     // ==================== 系统配置管理 ====================
 
     /**
-     * 获取系统设置
+     * 管理端：获取完整系统设置（含安全、邮件 SMTP 等敏感项）
      */
-    @OperationLog(module = "SYSTEM", type = "SELECT", description = "查询系统设置")
+    @OperationLog(module = "SYSTEM", type = "SELECT", description = "查询系统设置(管理端全量)")
     @GetMapping("/settings")
-    public Result<Map<String, Map<String, Object>>> getSystemSettings() {
+    public Result<Map<String, Map<String, Object>>> getSystemSettings(HttpServletRequest request) {
+        Integer roleType = jwtUtil.getRoleTypeFromRequest(request);
+        if (roleType == null || roleType != 1) {
+            return Result.error(403, "权限不足，仅管理员可访问");
+        }
         List<SystemConfig> settings = systemService.getSystemSettings();
-        
-        // 将配置列表转换为前端需要的分组格式
+        return Result.success(buildGroupedSettings(settings, false));
+    }
+
+    /**
+     * 公开范围：已登录用户可访问，仅返回基础设置与通知开关等非密钥配置；
+     * 不包含 security.*、email.*（避免 SMTP 密码、会话策略等泄露）。
+     */
+    @OperationLog(module = "SYSTEM", type = "SELECT", description = "查询系统设置(公开范围)")
+    @GetMapping("/settings/public")
+    public Result<Map<String, Map<String, Object>>> getPublicSystemSettings(HttpServletRequest request) {
+        Long userId = jwtUtil.getUserIdFromRequest(request);
+        if (userId == null) {
+            return Result.error(401, "未登录或登录已过期");
+        }
+        List<SystemConfig> settings = systemService.getSystemSettings();
+        return Result.success(buildGroupedSettings(settings, true));
+    }
+
+    /**
+     * 将配置列表转换为前端分组格式。
+     *
+     * @param publicOnly true 时排除 security、email 分组
+     */
+    private Map<String, Map<String, Object>> buildGroupedSettings(List<SystemConfig> settings, boolean publicOnly) {
         Map<String, Map<String, Object>> groupedSettings = new HashMap<>();
-        
         for (SystemConfig config : settings) {
             String configKey = config.getConfigKey();
             if (configKey == null) {
                 continue;
             }
-            
-            // 根据配置键确定前端分组
             String frontendGroup = determineFrontendGroup(configKey);
             if (frontendGroup == null) {
                 continue;
             }
-            
-            // 确保分组存在
+            if (publicOnly && ("security".equals(frontendGroup) || "email".equals(frontendGroup))) {
+                continue;
+            }
             groupedSettings.putIfAbsent(frontendGroup, new HashMap<>());
-            
-            // 将数据库配置键转换为前端驼峰命名
             String frontendKey = convertToFrontendKey(configKey, frontendGroup);
             Object value = convertConfigValue(config.getConfigValue(), config.getConfigType());
-            
             groupedSettings.get(frontendGroup).put(frontendKey, value);
         }
-        
-        return Result.success(groupedSettings);
+        return groupedSettings;
     }
     
     /**
@@ -216,12 +236,16 @@ public class SystemController {
      */
     @OperationLog(module = "SYSTEM", type = "UPDATE", description = "更新系统设置")
     @PutMapping("/settings")
-    public Result<Boolean> updateSystemSettings(@RequestBody SystemSettingsRequest request) {
+    public Result<Boolean> updateSystemSettings(@RequestBody SystemSettingsRequest request,
+                                               HttpServletRequest httpRequest) {
+        Integer roleType = jwtUtil.getRoleTypeFromRequest(httpRequest);
+        if (roleType == null || roleType != 1) {
+            return Result.error(403, "权限不足，仅管理员可访问");
+        }
         log.info("更新系统设置，类型：{}", request.getType());
-        
-        // 将前端数据转换为SystemConfig列表
+
         List<SystemConfig> configs = convertToSystemConfigs(request);
-        
+
         boolean result = systemService.updateSystemSettings(configs);
         return Result.success(result);
     }
