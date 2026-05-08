@@ -95,6 +95,25 @@
               value-format="YYYY-MM-DD" style="width: 100%" @blur="handleFieldBlur('birthDate')" />
           </el-form-item>
 
+          <el-form-item label="验证码" prop="captchaCode">
+            <div class="captcha-line">
+              <el-input
+                v-model="registerForm.captchaCode"
+                placeholder="请输入验证码"
+                maxlength="6"
+                clearable
+                class="captcha-input"
+              />
+              <img
+                v-if="captchaImageSrc"
+                :src="captchaImageSrc"
+                alt=""
+                class="captcha-img"
+                @click="refreshCaptcha"
+              />
+            </div>
+          </el-form-item>
+
           <el-form-item>
             <el-checkbox v-model="agreed">我已阅读并同意《用户服务协议》和《隐私政策》</el-checkbox>
           </el-form-item>
@@ -115,11 +134,11 @@
 
 <script setup>
 import message from '@/plugins/message'
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 
 import { User, Lock, Avatar, Iphone, Postcard } from '@element-plus/icons-vue'
-import { register, checkUsername, checkPhone } from '@/api/user'
+import { register, checkUsername, checkPhone, getCaptchaImage } from '@/api/user'
 import { useFormValidation } from '@/composables/useFormValidation'
 
 const router = useRouter()
@@ -133,8 +152,28 @@ const registerForm = reactive({
   phone: '',
   idCard: '',
   gender: 0,
-  birthDate: ''
+  birthDate: '',
+  captchaId: '',
+  captchaCode: ''
 })
+
+const captchaImageSrc = ref('')
+
+const refreshCaptcha = async () => {
+  registerForm.captchaCode = ''
+  registerForm.captchaId = ''
+  captchaImageSrc.value = ''
+  try {
+    const res = await getCaptchaImage()
+    if (res.code === 200 && res.data) {
+      registerForm.captchaId = res.data.captchaId || ''
+      const b64 = res.data.imageBase64 || ''
+      captchaImageSrc.value = b64 ? `data:image/png;base64,${b64}` : ''
+    }
+  } catch {
+    captchaImageSrc.value = ''
+  }
+}
 
 // 自定义验证：两次密码一致
 const validatePassword = (rule, value, callback) => {
@@ -192,6 +231,9 @@ const registerRules = {
   ],
   birthDate: [
     { required: true, message: '请填写出生日期', trigger: 'change' }
+  ],
+  captchaCode: [
+    { required: true, message: '请输入验证码', trigger: 'blur' }
   ]
 }
 
@@ -274,7 +316,8 @@ const handleRegister = async () => {
         }, 1000)
       }
     } catch (error) {
-
+      message.error((error && error.message) || '注册失败，请重试')
+      await refreshCaptcha()
     } finally {
       loading.value = false
     }
@@ -285,6 +328,10 @@ const handleRegister = async () => {
 const goToLogin = () => {
   router.push('/login')
 }
+
+onMounted(() => {
+  refreshCaptcha()
+})
 </script>
 
 <style scoped lang="scss">
@@ -355,6 +402,26 @@ const goToLogin = () => {
   font-weight: 500;
   color: #333;
 }
+
+.captcha-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.captcha-input {
+  flex: 1;
+  min-width: 0;
+}
+.captcha-img {
+  height: 40px;
+  width: 110px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid #e5e7eb;
+}
+
 .pwd-strength {
   display: flex;
   align-items: center;

@@ -66,6 +66,18 @@ public class RegisterRequest implements Serializable {
      */
     @NotNull(message = "请填写出生日期")
     private LocalDate birthDate;
+
+    /**
+     * 图形验证码 ID（与登录共用 /api/captcha/image）
+     */
+    @NotBlank(message = "验证码错误")
+    private String captchaId;
+
+    /**
+     * 图形验证码内容
+     */
+    @NotBlank(message = "验证码错误")
+    private String captchaCode;
 }
 
 

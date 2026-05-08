@@ -212,6 +212,10 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Result<Void> register(RegisterRequest request) {
+        if (!captchaService.validateAndConsume(request.getCaptchaId(), request.getCaptchaCode())) {
+            return Result.error(ResultCode.PARAM_ERROR.getCode(), "验证码错误");
+        }
+
         // 1. 校验两次密码是否一致
         if (!request.getPassword().equals(request.getConfirmPassword())) {
             return Result.error(ResultCode.BAD_REQUEST.getCode(), "两次密码输入不一致");

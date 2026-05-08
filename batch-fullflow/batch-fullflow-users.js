@@ -3,6 +3,7 @@
 const fs = require("fs");
 const path = require("path");
 const { createUserSeeds, createHealthProfile } = require("./data-generator");
+const { loginWithCaptcha, registerWithCaptcha } = require("./captcha-login");
 
 const DEFAULTS = {
   baseUrl: process.env.BASE_URL || "http://127.0.0.1:8000",
@@ -55,7 +56,10 @@ async function withRetry(fn, retries, stageName) {
       lastErr = err;
       if (i < retries) {
         console.warn(`[retry] ${stageName} attempt ${i + 1} failed: ${err.message}`);
-        await sleep(500 * (i + 1));
+        const msg = String(err.message || "");
+        const rateLimited = msg.includes("频繁") || msg.includes("too many") || msg.includes("429");
+        const backoffMs = rateLimited ? 4000 + i * 2000 : 500 * (i + 1);
+        await sleep(backoffMs);
       }
     }
   }
@@ -311,12 +315,7 @@ async function runSingleUser(base, seedUser, opts, idx, total, imageIdx0) {
   await withRetry(
     async () => {
       mark("register");
-      await requestJson({
-        method: "POST",
-        url: `${base}/api/user/register`,
-        body: seedUser,
-        timeoutMs: opts.timeoutMs
-      });
+      await registerWithCaptcha(base, seedUser, opts.timeoutMs);
       markDone("register");
     },
     opts.retryTimes,
@@ -326,14 +325,14 @@ async function runSingleUser(base, seedUser, opts, idx, total, imageIdx0) {
   await withRetry(
     async () => {
       mark("login");
-      const res = await requestJson({
-        method: "POST",
-        url: `${base}/api/user/login`,
-        body: { username: seedUser.username, password: seedUser.password },
-        timeoutMs: opts.timeoutMs
-      });
-      token = res.data.token;
-      userId = res.data.id;
+      const logged = await loginWithCaptcha(
+        base,
+        seedUser.username,
+        seedUser.password,
+        opts.timeoutMs
+      );
+      token = logged.token;
+      userId = logged.userId;
       if (!token || !userId) throw new Error("login token/id missing");
       markDone("login");
     },
