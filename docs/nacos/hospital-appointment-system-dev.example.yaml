@@ -86,6 +86,9 @@ appointment:
   payment-timeout-minutes: 30
 
 aliyun:
+  oss:
+    # 与 OssConfig 前缀 aliyun.oss 对齐；限制 GET /api/oss/presigned-url 的最大有效期（分钟）
+    presigned-url-max-minutes: 120
   area:
     api:
       host: https://areasel.market.alicloudapi.com

@@ -9,6 +9,7 @@ import com.hospital.service.OssService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
@@ -264,13 +265,22 @@ public class OssServiceImpl implements OssService {
             return signedUrlStr;
 
         } catch (Exception e) {
-            log.error("生成签名URL失败: url={}, error={}", fileUrl, e.getMessage());
+            log.error("生成签名URL失败: url={}, error={}", sanitizeOssUrlForLog(fileUrl), e.getMessage());
             return fileUrl;
         } finally {
             if (ossClient != null) {
                 ossClient.shutdown();
             }
         }
+    }
+
+    private static String sanitizeOssUrlForLog(String url) {
+        if (!StringUtils.hasText(url)) {
+            return "";
+        }
+        int q = url.indexOf('?');
+        String base = q > 0 ? url.substring(0, q) : url;
+        return base.length() > 220 ? base.substring(0, 220) + "..." : base;
     }
 }
 
