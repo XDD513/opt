@@ -1,6 +1,7 @@
 package com.hospital.controller;
 
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hospital.annotation.OperationLog;
 import com.hospital.common.result.Result;
 import com.hospital.entity.Dictionary;
@@ -35,6 +36,9 @@ public class SystemController {
     @Autowired
     private JwtUtil jwtUtil;
 
+    @Autowired
+    private ObjectMapper objectMapper;
+
     // ==================== 操作日志管理 ====================
 
     /**
@@ -42,7 +46,12 @@ public class SystemController {
      */
     @OperationLog(module = "SYSTEM", type = "SELECT", description = "查询操作日志列表")
     @GetMapping("/logs")
-    public Result<IPage<com.hospital.entity.OperationLog>> getOperationLogs(@RequestParam Map<String, Object> params) {
+    public Result<IPage<com.hospital.entity.OperationLog>> getOperationLogs(@RequestParam Map<String, Object> params,
+                                                                           HttpServletRequest request) {
+        Integer roleType = jwtUtil.getRoleTypeFromRequest(request);
+        if (roleType == null || roleType != 1) {
+            return Result.error(403, "权限不足，仅管理员可访问");
+        }
         IPage<com.hospital.entity.OperationLog> logs = systemService.getOperationLogs(params);
         return Result.success(logs);
     }
@@ -52,7 +61,17 @@ public class SystemController {
      */
     @OperationLog(module = "SYSTEM", type = "SELECT", description = "导出操作日志")
     @GetMapping("/logs/export")
-    public void exportOperationLogs(@RequestParam Map<String, Object> params, HttpServletResponse response) throws IOException {
+    public void exportOperationLogs(@RequestParam Map<String, Object> params,
+                                   HttpServletRequest request,
+                                   HttpServletResponse response) throws IOException {
+        Integer roleType = jwtUtil.getRoleTypeFromRequest(request);
+        if (roleType == null || roleType != 1) {
+            response.setStatus(403);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write(objectMapper.writeValueAsString(Result.error(403, "权限不足，仅管理员可访问")));
+            return;
+        }
+
         log.info("导出操作日志，参数：{}", params);
 
         byte[] data = systemService.exportOperationLogs(params);
