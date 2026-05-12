@@ -2,7 +2,6 @@ import { reactive, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import message from '@/plugins/message'
-import notify from '@/plugins/notify'
 import { useUserStore } from '@/stores/user'
 import { submitTest as submitTestApi, checkTestByAppointment, getTestReport } from '@/api/constitution'
 import { getRecipePromptStreamUrl } from '@/api/recipe'
@@ -17,6 +16,7 @@ import {
   extractBalancedJsonObject,
   normalizeRecipeJson
 } from '@/utils/parseAiHealthJson'
+import { collectRecipeNamesFromHealthSuggestion } from '@/utils/constitutionRecipeExtract'
 
 const createDefaultState = () => ({
   appointmentId: null,
@@ -59,6 +59,26 @@ const createDefaultState = () => ({
 
 // 模块级单例：离开页面后保留草稿状态，返回页面可继续
 const state = reactive(createDefaultState())
+
+/** 深度分析/计划 SSE：用于在「重置测试」等场景主动关闭，避免后台悬挂 */
+let activeConstitutionEs = null
+
+/**
+ * 与路由/组件无关的后台诊断流水线（离开体质页仍可继续跑完）
+ */
+const pipelineCtx = reactive({
+  running: false,
+  testId: null,
+  abortRequested: false
+})
+
+let pipelinePollTimer = null
+const clearPipelinePoll = () => {
+  if (pipelinePollTimer) {
+    clearInterval(pipelinePollTimer)
+    pipelinePollTimer = null
+  }
+}
 
 /**
  * 体质类型映射
@@ -435,9 +455,34 @@ export function useConstitutionTest() {
   }
 
   /**
+   * 中止后台诊断流水线并关闭体质分析/计划的 SSE（重置测试或切换会话时用）
+   */
+  const abortBackgroundDiagnosisAndStreams = () => {
+    pipelineCtx.abortRequested = true
+    clearPipelinePoll()
+    pipelineCtx.running = false
+    pipelineCtx.testId = null
+    try {
+      if (activeConstitutionEs) {
+        activeConstitutionEs.close()
+      }
+    } catch {
+      // ignore
+    }
+    activeConstitutionEs = null
+    state.runningJobs.analysis = false
+    state.runningJobs.plans = false
+    state.runningJobs.recipe = false
+    state.isAiLoading = false
+    state.streamPhase = null
+    state.streamingAiContent = ''
+  }
+
+  /**
    * 重置表单
    */
   const resetForm = (options = {}) => {
+    abortBackgroundDiagnosisAndStreams()
     const { keepTongue = false } = options || {}
     state.selectedAnswers = {}
     state.testResult = null
@@ -470,11 +515,11 @@ export function useConstitutionTest() {
     if (!testId) return
 
     if (phase === 'analysis' && state.runningJobs.analysis) {
-      notify.info({ title: '深度分析', message: '正在生成中，请稍候…' })
+      message.titled.info({ title: '深度分析', message: '正在生成中，请稍候…' })
       return
     }
     if (phase === 'plans' && state.runningJobs.plans) {
-      notify.info({ title: '健康计划', message: '正在生成中，请稍候…' })
+      message.titled.info({ title: '健康计划', message: '正在生成中，请稍候…' })
       return
     }
     if (phase === 'analysis') state.runningJobs.analysis = true
@@ -490,6 +535,7 @@ export function useConstitutionTest() {
     const encToken = encodeURIComponent(token || '')
     const url = `${base || ''}/api/constitution/test/ai-suggestion/stream/${testId}?token=${encToken}&phase=${encodeURIComponent(phase)}`
     const eventSource = new EventSource(url)
+    activeConstitutionEs = eventSource
     /** 正常收到 finish 后浏览器仍会触发 EventSource.onerror，禁止据此无限重连 */
     let sseFinished = false
 
@@ -498,7 +544,14 @@ export function useConstitutionTest() {
       state.streamPhase = null
       if (phase === 'analysis') state.runningJobs.analysis = false
       if (phase === 'plans') state.runningJobs.plans = false
-      eventSource.close()
+      try {
+        eventSource.close()
+      } catch {
+        // ignore
+      }
+      if (activeConstitutionEs === eventSource) {
+        activeConstitutionEs = null
+      }
     }
 
     eventSource.onopen = () => {
@@ -516,6 +569,9 @@ export function useConstitutionTest() {
       cleanup()
       setTimeout(async () => {
         try {
+          if (!state.testResult || String(state.testResult?.id || '') !== String(testId)) {
+            return
+          }
           const res = await getTestReport(testId)
           if (res.code === 200 && res.data) {
             const primaryCode = res.data.primaryConstitution || state.testResult?.primaryConstitution
@@ -540,13 +596,13 @@ export function useConstitutionTest() {
             state.streamingAiContent = ''
           }
           if (phase === 'analysis') {
-            notify.success({ title: '深度分析生成完成', message: '已完成体质深度分析，可继续生成健康计划。' })
+            message.titled.success({ title: '深度分析生成完成', message: '已完成体质深度分析，可继续生成健康计划。' })
           } else if (phase === 'plans') {
-            notify.success({ title: '健康计划生成完成', message: '已生成健康计划与调养建议。' })
+            message.titled.success({ title: '健康计划生成完成', message: '已生成健康计划与调养建议。' })
           }
         } catch (error) {
           console.error('拉取最终报告失败:', error)
-          notify.error({ title: '生成结果拉取失败', message: error?.message || '请稍后重试' })
+          message.titled.error({ title: '生成结果拉取失败', message: error?.message || '请稍后重试' })
         }
       }, 500)
     })
@@ -555,8 +611,11 @@ export function useConstitutionTest() {
       if (sseFinished) return
       const buf = state.streamingAiContent || ''
       cleanup()
+      if (pipelineCtx.abortRequested || String(state.testResult?.id || '') !== String(testId)) {
+        return
+      }
       if (buf.includes('AI HTTP 401') || buf.includes('AI HTTP 403')) {
-        notify.error({
+        message.titled.error({
           title: phase === 'plans' ? '健康计划生成失败' : '深度分析生成失败',
           message: 'AI 上游鉴权失败（如 DeepSeek API Key）。请检查服务端配置后重试，无需反复刷新页面。'
         })
@@ -566,7 +625,7 @@ export function useConstitutionTest() {
         await ensureValidTokenForSse()
         streamAiSuggestion(testId, phase)
       } catch {
-        notify.error({ title: phase === 'plans' ? '健康计划生成失败' : '深度分析生成失败', message: '连接中断或鉴权失败，请稍后重试。' })
+        message.titled.error({ title: phase === 'plans' ? '健康计划生成失败' : '深度分析生成失败', message: '连接中断或鉴权失败，请稍后重试。' })
       }
     }
 
@@ -583,7 +642,7 @@ export function useConstitutionTest() {
       return
     }
     if (state.runningJobs.recipe) {
-      notify.info({ title: '药膳生成', message: '正在生成中，请稍候…' })
+      message.titled.info({ title: '药膳生成', message: '正在生成中，请稍候…' })
       return
     }
     state.runningJobs.recipe = true
@@ -594,21 +653,21 @@ export function useConstitutionTest() {
     const es = new EventSource(url)
     let recipeSseFinished = false
     const cleanup = () => { state.isAiLoading = false; state.streamPhase = null; state.runningJobs.recipe = false; es.close() }
-    notify.info({ title: '药膳生成', message: '正在生成中，请稍候…' })
+    message.titled.info({ title: '药膳生成', message: '正在生成中，请稍候…' })
     es.onmessage = (e) => { if (e.data) state.streamingAiContent += e.data }
     es.addEventListener('finish', () => {
       recipeSseFinished = true
       try { state.latestGeneratedRecipeText = (state.streamingAiContent || '').trim() } catch (_) {}
       state.streamingAiContent = ''
       cleanup()
-      notify.success({ title: '药膳生成完成', message: '已生成药膳建议。' })
+      message.titled.success({ title: '药膳生成完成', message: '已生成药膳建议。' })
     })
     es.onerror = async () => {
       if (recipeSseFinished) return
       const buf = state.streamingAiContent || ''
       cleanup()
       if (buf.includes('AI HTTP 401') || buf.includes('AI HTTP 403')) {
-        notify.error({ title: '药膳生成失败', message: 'AI 上游鉴权失败，请检查服务端 DeepSeek 等配置。' })
+        message.titled.error({ title: '药膳生成失败', message: 'AI 上游鉴权失败，请检查服务端 DeepSeek 等配置。' })
         return
       }
       try {
@@ -616,7 +675,7 @@ export function useConstitutionTest() {
         streamRecipeByPrompt(prompt)
         return
       } catch {}
-      notify.error({ title: '药膳生成失败', message: '连接中断或鉴权失败，请稍后重试。' })
+      message.titled.error({ title: '药膳生成失败', message: '连接中断或鉴权失败，请稍后重试。' })
     }
     return () => cleanup()
   }
@@ -631,7 +690,7 @@ export function useConstitutionTest() {
       return
     }
     if (state.runningJobs.recipe) {
-      notify.info({ title: '药膳列表生成', message: '正在生成中，请稍候…' })
+      message.titled.info({ title: '药膳列表生成', message: '正在生成中，请稍候…' })
       return
     }
     state.runningJobs.recipe = true
@@ -715,7 +774,210 @@ export function useConstitutionTest() {
     state.isAiLoading = false
     state.streamPhase = null
     state.runningJobs.recipe = false
-    notify.success({ title: '药膳列表生成完成', message: `已完成 ${state.unpersistedRecipes?.length || 0} 道药膳生成。` })
+    message.titled.success({ title: '药膳列表生成完成', message: `已完成 ${state.unpersistedRecipes?.length || 0} 道药膳生成。` })
+  }
+
+  /**
+   * 离开页面后 SSE 已断开：清理“生成中”标记，避免返回后无法再次触发流式任务
+   */
+  const resetAiExecutionFlags = () => {
+    state.runningJobs.analysis = false
+    state.runningJobs.plans = false
+    state.runningJobs.recipe = false
+    state.isAiLoading = false
+    state.streamPhase = null
+    state.streamingAiContent = ''
+  }
+
+  /**
+   * 从服务端拉取最新报告并合并到当前 testResult（用于返回页面后与会话内状态对齐）
+   * @returns {Promise<boolean>}
+   */
+  const refreshTestResultFromServer = async () => {
+    const testId = state.testResult?.id
+    if (!testId) return false
+    try {
+      const res = await getTestReport(testId)
+      if (res.code !== 200 || !res.data) return false
+      const primaryCode = res.data.primaryConstitution || state.testResult?.primaryConstitution
+      const derivedSecondary = deriveSecondaryFromScores(res.data.scores || {}, primaryCode)
+      const secondaryCode = res.data.secondaryConstitution || state.testResult?.secondaryConstitution || derivedSecondary.code
+      state.testResult = {
+        ...state.testResult,
+        primaryConstitution: primaryCode,
+        primaryConstitutionName:
+          res.data.primaryConstitutionName ||
+          state.testResult?.primaryConstitutionName ||
+          CONSTITUTION_TYPE_MAP[String(primaryCode || '').toUpperCase()] ||
+          primaryCode,
+        secondaryConstitution: secondaryCode,
+        secondaryConstitutionName:
+          res.data.secondaryConstitutionName ||
+          (secondaryCode
+            ? (CONSTITUTION_TYPE_MAP[String(secondaryCode).toUpperCase()] || secondaryCode)
+            : state.testResult?.secondaryConstitutionName),
+        secondaryScore: secondaryCode
+          ? (res.data.scores?.[secondaryCode] ?? derivedSecondary.score ?? state.testResult?.secondaryScore ?? 0)
+          : null,
+        healthSuggestion: res.data.healthSuggestion,
+        analysis: res.data.report || state.testResult?.analysis,
+        suggestions: res.data.healthSuggestion
+          ? res.data.healthSuggestion.split('；')
+          : state.testResult?.suggestions
+      }
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const healthTextHasAnalysis = (s) => {
+    if (!s) return false
+    const m = String(s).match(/"analysis"\s*:\s*"([^"]+)"/)
+    if (m && m[1] && m[1].length >= 40) return true
+    return /体质深度分析/.test(String(s)) && String(s).length >= 80
+  }
+
+  const healthTextHasPlans = (s) => {
+    if (!s) return false
+    return /"plans"\s*:/.test(String(s)) || /"planType"\s*:/.test(String(s))
+  }
+
+  const schedulePipelineReportPoll = () => {
+    clearPipelinePoll()
+    pipelinePollTimer = setInterval(() => {
+      if (!pipelineCtx.running || pipelineCtx.abortRequested) {
+        clearPipelinePoll()
+        return
+      }
+      void refreshTestResultFromServer()
+    }, 2500)
+  }
+
+  const stillSamePipelineTest = (startedId) =>
+    String(state.testResult?.id || '') === String(startedId || '')
+
+  const waitPipelinePhaseDone = async (timeoutMs = 180000) => {
+    const t0 = Date.now()
+    while (state.isAiLoading) {
+      if (pipelineCtx.abortRequested || !stillSamePipelineTest(pipelineCtx.testId)) return false
+      if (Date.now() - t0 > timeoutMs) return false
+      await new Promise((r) => setTimeout(r, 200))
+    }
+    return true
+  }
+
+  const waitPipelineUntil = async (predicate, timeoutMs = 90000) => {
+    const t0 = Date.now()
+    while (!predicate()) {
+      if (pipelineCtx.abortRequested || !stillSamePipelineTest(pipelineCtx.testId)) return false
+      if (Date.now() - t0 > timeoutMs) return false
+      await refreshTestResultFromServer()
+      await new Promise((r) => setTimeout(r, 400))
+    }
+    return true
+  }
+
+  /**
+   * 启动与页面无关的全量诊断流水线（分析→计划→药膳），换页后仍继续执行
+   */
+  const runBackgroundDiagnosisPipeline = () => {
+    const testId = state.testResult?.id
+    if (!testId) return
+    if (pipelineCtx.running) {
+      message.titled.info({ title: '体质诊断', message: '诊断流程已在运行（含后台），请稍候…' })
+      return
+    }
+    if (state.isAiLoading && (state.runningJobs.analysis || state.runningJobs.plans)) {
+      message.titled.info({ title: '体质诊断', message: 'AI 正在输出，请稍候…' })
+      return
+    }
+
+    if (state.runningJobs.recipe) {
+      message.titled.info({ title: '体质诊断', message: '药膳生成尚未结束，请稍后再启动全流程' })
+      return
+    }
+
+    pipelineCtx.abortRequested = false
+    pipelineCtx.running = true
+    pipelineCtx.testId = testId
+    schedulePipelineReportPoll()
+
+    const startedId = testId
+    const run = async () => {
+      try {
+        await refreshTestResultFromServer()
+        const id = String(startedId)
+        const hs = () => state.testResult?.healthSuggestion || ''
+
+        if (!healthTextHasAnalysis(hs())) {
+          message.titled.info({ title: '体质诊断', message: '第1步：后台生成深度分析（离开本页也会继续）' })
+          streamAiSuggestion(id, 'analysis')
+          await waitPipelinePhaseDone(180000)
+          await waitPipelineUntil(
+            () => healthTextHasAnalysis(state.testResult?.healthSuggestion || ''),
+            90000
+          )
+          await refreshTestResultFromServer()
+          if (pipelineCtx.abortRequested || !stillSamePipelineTest(startedId)) return
+          if (!healthTextHasAnalysis(hs())) {
+            message.titled.warning({
+              title: '深度分析',
+              message: '暂未从服务器同步到分析结果，轮询会继续；您可稍后回到本页查看。'
+            })
+          }
+        }
+
+        if (pipelineCtx.abortRequested || !stillSamePipelineTest(startedId)) return
+
+        if (!healthTextHasPlans(hs())) {
+          if (!healthTextHasAnalysis(hs())) {
+            message.titled.warning({ title: '健康计划', message: '缺少深度分析，已暂停后台计划生成' })
+            return
+          }
+          message.titled.info({ title: '体质诊断', message: '第2步：后台生成健康计划' })
+          streamAiSuggestion(id, 'plans')
+          await waitPipelinePhaseDone(180000)
+          await waitPipelineUntil(
+            () => healthTextHasPlans(state.testResult?.healthSuggestion || ''),
+            90000
+          )
+          await refreshTestResultFromServer()
+          if (pipelineCtx.abortRequested || !stillSamePipelineTest(startedId)) return
+        }
+
+        if (pipelineCtx.abortRequested || !stillSamePipelineTest(startedId)) return
+
+        const recipeDone =
+          Array.isArray(state.unpersistedRecipes) && state.unpersistedRecipes.length > 0
+        if (!recipeDone) {
+          if (!healthTextHasPlans(hs())) {
+            message.titled.warning({ title: '药膳列表', message: '缺少健康计划，已跳过后台药膳步骤' })
+            return
+          }
+          message.titled.info({ title: '体质诊断', message: '第3步：后台生成药膳列表' })
+          const names = collectRecipeNamesFromHealthSuggestion(hs())
+          if (names.length === 0) {
+            message.info('DIET 计划未提供可用药膳名')
+          } else {
+            await streamRecipesBatch(names)
+          }
+        }
+
+        await refreshTestResultFromServer()
+        if (stillSamePipelineTest(startedId)) {
+          message.titled.success({ title: '体质诊断', message: '诊断流程已执行完成' })
+        }
+      } catch (e) {
+        console.error(e)
+        message.titled.error({ title: '体质诊断', message: e?.message || '后台诊断流程异常' })
+      } finally {
+        clearPipelinePoll()
+        pipelineCtx.running = false
+        pipelineCtx.testId = null
+      }
+    }
+    void run()
   }
 
   return {
@@ -734,7 +996,12 @@ export function useConstitutionTest() {
     streamAiSuggestion,
     streamRecipeByPrompt
     ,
-    streamRecipesBatch
+    streamRecipesBatch,
+    refreshTestResultFromServer,
+    resetAiExecutionFlags,
+    pipelineCtx,
+    runBackgroundDiagnosisPipeline,
+    abortBackgroundDiagnosisAndStreams
   }
 }
 

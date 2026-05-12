@@ -73,18 +73,18 @@
               <div class="controls-left">
                 <div class="controls-title">生成与操作</div>
                 <div class="controls-hint">
-                  点击“开始诊断”后将自动依次生成：深度分析、健康计划、药膳列表。
+                  点击「开始诊断」后将在后台依次生成：深度分析、健康计划、药膳列表；离开本页也会继续，返回后可流式查看已生成内容。
                 </div>
               </div>
               <div class="controls-right">
                 <el-button
                   type="primary"
                   size="default"
-                  :loading="state.isAiLoading || isDiagnosisRunning"
-                  :disabled="!state.testResult?.id || state.isAiLoading || isDiagnosisRunning"
+                  :loading="state.isAiLoading || pipelineCtx.running"
+                  :disabled="!state.testResult?.id || state.isAiLoading || pipelineCtx.running"
                   @click="handleStartDiagnosis"
                 >
-                  {{ isDiagnosisRunning ? '诊断进行中…' : '开始诊断' }}
+                  {{ pipelineCtx.running ? '后台诊断进行中…' : '开始诊断' }}
                 </el-button>
               </div>
             </div>
@@ -102,6 +102,7 @@
                 :latest-recipe-text="state.latestGeneratedRecipeText"
                 :unpersisted-recipes="state.unpersistedRecipes"
                 :batch-recipes-saved="batchRecipesSaved"
+                :reveal-replay-nonce="revealReplayNonce"
                 mode="full"
                 :show-header="false"
                 embedded
@@ -128,12 +129,15 @@ import TestResult from '@/components/patient/constitution/TestResult.vue'
 import TongueDiagnosisUpload from '@/components/patient/constitution/TongueDiagnosisUpload.vue'
 import message from '@/plugins/message'
 import { parseAiHealthSuggestion } from '@/utils/parseAiHealthJson'
+import { collectRecipeNamesFromHealthSuggestion } from '@/utils/constitutionRecipeExtract'
+
+const BG_DIAG_SESSION_KEY = 'hospital_diagnosis_bg_pipeline'
 
 const route = useRoute()
 const router = useRouter()
 const uploadKey = ref(0)
 const batchRecipesSaved = ref(false)
-const isDiagnosisRunning = ref(false)
+const revealReplayNonce = ref(0)
 
 // 使用 composable
 const {
@@ -145,7 +149,11 @@ const {
   resetForm,
   streamAiSuggestion,
   streamRecipeByPrompt,
-  streamRecipesBatch
+  streamRecipesBatch,
+  refreshTestResultFromServer,
+  resetAiExecutionFlags,
+  pipelineCtx,
+  runBackgroundDiagnosisPipeline
 } = useConstitutionTest()
 
 /**
@@ -214,107 +222,7 @@ const runPlansStream = () => {
   scrollToResultIfNeeded()
 }
 
-const waitForPhaseFinished = async (timeoutMs = 120000) => {
-  const startedAt = Date.now()
-  while (state.isAiLoading) {
-    if (Date.now() - startedAt > timeoutMs) return false
-    await new Promise((resolve) => setTimeout(resolve, 200))
-  }
-  return true
-}
-
-const waitForCondition = async (checker, timeoutMs = 120000) => {
-  const startedAt = Date.now()
-  while (!checker()) {
-    if (Date.now() - startedAt > timeoutMs) return false
-    await new Promise((resolve) => setTimeout(resolve, 200))
-  }
-  return true
-}
-
-/**
- * 提取“体质深度分析”文本用于提示词上下文
- * 兼容 JSON 与半结构化文本
- */
-const getDeepAnalysisForPrompt = () => {
-  const raw = String(state.testResult?.healthSuggestion || '').trim()
-  if (!raw) return ''
-  try {
-    const m = raw.match(/"analysis"\s*:\s*"([^"]+)"/)
-    if (m && m[1]) return m[1]
-  } catch {}
-  const idx = raw.indexOf('体质深度分析')
-  if (idx >= 0) {
-    const sub = raw.slice(idx)
-    const breakers = ['总体原则', '饮食', '起居', '穴位', 'plans', 'planType', '健康计划']
-    let cut = sub.length
-    for (const b of breakers) {
-      const p = sub.indexOf(b)
-      if (p > 0) cut = Math.min(cut, p)
-    }
-    return sub.slice(0, Math.min(cut, 300)).replace(/^体质深度分析[:：]?\s*/, '')
-  }
-  return ''
-}
-
-// 从 DIET 计划的 targetContent 抽取疑似药膳名（仅 targetContent，不使用 description）
-const extractRecipesFromText = (raw) => {
-  if (!raw) return []
-  let text = String(raw)
-    .replace(/(目标|早餐|午餐|晚餐|加餐|全天|建议|注意)[:：]/g, ' ')
-    .replace(/[()（）]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  const hits = []
-  // 规则1：典型药膳结尾关键词（粥/汤/羹/饮/茶）
-  const hardRegex = /[\u4e00-\u9fa5·]{2,30}(粥|汤|羹|饮|茶)/g
-  let m
-  while ((m = hardRegex.exec(text)) !== null) {
-    hits.push(m[0].trim())
-  }
-  const pieces = text.split(/[，、。；;,.]/).map(s => s.trim()).filter(Boolean)
-  const KEY = /(粥|汤|羹|饮|茶|药膳)/
-  for (const p of pieces) {
-    if (KEY.test(p)) {
-      let t = p.replace(/^(如|或者|或|搭配|加入|建议|宜|可选|例如)[:：]?/g, '').trim()
-      const cut = t.match(/^[\u4e00-\u9fa5·]{2,30}(粥|汤|羹|饮|茶)/)
-      if (cut) t = cut[0]
-      if (t.length >= 2) hits.push(t)
-    }
-  }
-  // 规则2：常见家常菜式（炒/炖/煮/蒸/焖/烩/拌），例如“韭菜炒鸡蛋”“生姜炖鸡肉”“清炒山药”
-  const cookRegex = /[\u4e00-\u9fa5·]{1,12}(清炒|炒|炖|煮|蒸|焖|烩|拌)[\u4e00-\u9fa5·]{1,12}/g
-  while ((m = cookRegex.exec(text)) !== null) {
-    hits.push(m[0].trim())
-  }
-  // 规则3：带“配/搭配”后跟菜名片段时的抓取
-  const pairRegex = /(配|搭配)[\u4e00-\u9fa5·]{2,16}/g
-  while ((m = pairRegex.exec(text)) !== null) {
-    const cand = m[0].replace(/^(配|搭配)/, '').trim()
-    if (cand && cand.length >= 2) hits.push(cand)
-  }
-  return Array.from(new Set(hits))
-}
-
-const buildRecipePrompt = (names) => {
-  const constitution = state.testResult?.primaryConstitutionName || ''
-  const list = Array.isArray(names) ? names.slice(0, 5).join('、') : ''
-  const seasonValue = state.currentSeasonValue || ''
-  // 在字典中查找中文名；若没有，退回英文值
-  const dict = Array.isArray(state.seasonDictionary) ? state.seasonDictionary : []
-  const seasonItem = dict.find(d => (d.dictValue || d.dict_value) === seasonValue)
-  const seasonLabel = seasonItem?.dictName || seasonItem?.dict_label || seasonValue
-  const ask = [
-    `请基于中医体质“${constitution}”生成以下药膳的标准化JSON：${list}。`,
-    `当前季节：${seasonLabel}（${seasonValue}）。请优先选用当季相宜食材、烹饪方法与禁忌。`,
-    '请返回字段：recipeName, constitutionType, season, category, difficulty, cookingTime, servings, ingredients[{name,amount,unit,note}], steps[string[]], efficacy, suitableSymptoms, contraindications, nutritionInfo{calorie,protein_g,fat_g,carb_g}, tips。',
-    '字段不可省略，键名必须完全一致。constitutionType取值：PINGHE|QIXU|YANGXU|YINXU|TANSHI|SHIRE|XUEYU|QIYU|TEBING|ALL；season取值：SPRING|SUMMER|AUTUMN|WINTER|ALL；difficulty取值1-5。',
-    '仅输出 JSON。'
-  ].join(' ')
-  return ask
-}
-
-// 生成药膳：按提示词调用异步任务
+// 生成药膳：按提示词调用异步任务（工作台内单独触发时使用）
 const handleGenerateRecipe = () => {
   if (!state.testResult?.id) {
     message.info('请先完成舌象采集并提交测试')
@@ -328,75 +236,27 @@ const handleGenerateRecipe = () => {
     message.warning('请先生成健康计划，再生成药膳列表')
     return
   }
-  // 新一轮生成时重置“批量已保存”标记
   batchRecipesSaved.value = false
-  const raw = state.testResult?.healthSuggestion || ''
-  const parsed = parseAiHealthSuggestion(String(raw))
-  const plans = parsed?.plans || []
-  const dietPlans = plans.filter(p => (p.planType || p.type) === 'DIET')
-  const names = []
-  for (const p of dietPlans) {
-    const src = p?.targetContent || ''
-    names.push(...extractRecipesFromText(src))
-  }
-  const recipeNames = Array.from(new Set(names))
+  const recipeNames = collectRecipeNamesFromHealthSuggestion(state.testResult?.healthSuggestion || '')
   if (recipeNames.length === 0) {
     message.info('DIET 计划未提供可用药膳名')
     return
   }
-  // 批量逐条生成，统一汇总展示（不入库）
-  return streamRecipesBatch(recipeNames)
+  const p = streamRecipesBatch(recipeNames)
   scrollToResultIfNeeded()
+  return p
 }
 
-const handleStartDiagnosis = async () => {
+const handleStartDiagnosis = () => {
   if (!state.testResult?.id) {
     message.info('请先完成舌象采集并提交测试')
     return
   }
-  if (state.isAiLoading || isDiagnosisRunning.value) {
-    message.info('诊断流程正在执行，请稍候')
+  if (state.isAiLoading || pipelineCtx.running) {
+    message.info('诊断流程正在执行（含后台），请稍候')
     return
   }
-  isDiagnosisRunning.value = true
-  try {
-    if (!hasAiAnalysis.value) {
-      message.info('第1步：生成深度分析')
-      streamAiSuggestion(state.testResult.id, 'analysis')
-      scrollToResultIfNeeded()
-      const phaseDone = await waitForPhaseFinished()
-      const analysisReady = phaseDone
-        ? await waitForCondition(() => hasAiAnalysis.value, 30000)
-        : false
-      if (!analysisReady) {
-        message.warning('深度分析生成未完成，请稍后重试')
-        return
-      }
-    }
-
-    if (!hasAiPlans.value) {
-      message.info('第2步：生成健康计划')
-      streamAiSuggestion(state.testResult.id, 'plans')
-      scrollToResultIfNeeded()
-      const phaseDone = await waitForPhaseFinished()
-      const plansReady = phaseDone
-        ? await waitForCondition(() => hasAiPlans.value, 30000)
-        : false
-      if (!plansReady) {
-        message.warning('健康计划生成未完成，请稍后重试')
-        return
-      }
-    }
-
-    if (!hasAiRecipe.value) {
-      message.info('第3步：生成药膳列表')
-      // 复用现有药膳生成逻辑，不新增接口
-      await handleGenerateRecipe()
-    }
-    message.success('诊断流程执行完成')
-  } finally {
-    isDiagnosisRunning.value = false
-  }
+  runBackgroundDiagnosisPipeline()
 }
 
 /**
@@ -425,6 +285,9 @@ const hasAiRecipe = computed(() => {
 
 const stageTag = computed(() => {
   if (!state.testResult?.id) return { type: 'info', text: '等待提交' }
+  if (pipelineCtx.running) {
+    return { type: 'primary', text: '后台诊断进行中…' }
+  }
   if (state.isAiLoading) {
     return { type: 'primary', text: state.streamPhase === 'plans' ? 'AI 正在生成计划…' : 'AI 正在生成分析…' }
   }
@@ -511,7 +374,9 @@ onMounted(async () => {
     resetForm()
     uploadKey.value += 1
   } else {
-    await loadQuestions()
+    // 已提交会话：切勿调用 loadQuestions()，否则会清空 testResult / isSubmitted，导致“又要重新提交”
+    resetAiExecutionFlags()
+    await refreshTestResultFromServer()
   }
   state.isInitialized = true
   if (state && state.latestGeneratedRecipe == null) {

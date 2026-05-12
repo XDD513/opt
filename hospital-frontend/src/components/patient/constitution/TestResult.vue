@@ -1039,6 +1039,13 @@ const props = defineProps({
   latestRecipe: {
     type: Object,
     default: null
+  },
+  /**
+   * 递增时：从当前已入库的 healthSuggestion 重播工作台入场动画（离页后台生成完成后回到页面）
+   */
+  revealReplayNonce: {
+    type: Number,
+    default: 0
   }
 })
 
@@ -1368,6 +1375,69 @@ watch(
     }
   },
   { immediate: true }
+)
+
+async function runOfflineWorkspaceReplay() {
+  if (!enableRevealAnimation.value) return
+  const parsed = parsedAiSuggestion.value
+  if (!parsed) return
+
+  const token = ++revealToken
+  resetRevealBuffers()
+
+  const analysisStr = String(parsed.analysis || '').trim()
+  if (analysisStr.length >= 10) {
+    revealingPhase.value = 'analysis'
+    animatedAnalysisText.value = ''
+    animatedSummaryText.value = ''
+    await typewrite(analysisStr, (v) => (animatedAnalysisText.value = v), token)
+    await sleep(180)
+    await typewrite(String(parsed.summary || ''), (v) => (animatedSummaryText.value = v), token, 12)
+    if (token !== revealToken) return
+    fillRevealBuffersInstant(parsedAiSuggestion.value || {})
+    revealingPhase.value = null
+  }
+
+  if (token !== revealToken) return
+  const latestParsed = parsedAiSuggestion.value || {}
+  if (Array.isArray(latestParsed.plans) && latestParsed.plans.length > 0) {
+    revealingPhase.value = 'plans'
+    displayDietRecommend.value = []
+    displayDietAvoid.value = []
+    displayLifestyle.value = []
+    displayAcupoints.value = []
+    displayedPlans.value = []
+    await revealList(latestParsed?.diet?.recommend, displayDietRecommend, token, 110)
+    await revealList(latestParsed?.diet?.avoid, displayDietAvoid, token, 110)
+    await revealList(latestParsed?.lifestyle, displayLifestyle, token, 140)
+    await revealList(normalizeAcupointsList(latestParsed?.acupoints), displayAcupoints, token, 160)
+    await revealList(Array.isArray(latestParsed?.plans) ? latestParsed.plans : [], displayedPlans, token, 120)
+    if (token !== revealToken) return
+    fillRevealBuffersInstant(parsedAiSuggestion.value || {})
+    revealingPhase.value = null
+  }
+
+  if (token !== revealToken) return
+  const ur = Array.isArray(props.unpersistedRecipes) ? props.unpersistedRecipes : []
+  if (ur.length > 0) {
+    revealingPhase.value = 'recipe'
+    displayedUnpersistedRecipes.value = []
+    await revealList(ur, displayedUnpersistedRecipes, token, 130)
+    if (token !== revealToken) return
+    displayedUnpersistedRecipes.value = ur
+    revealingPhase.value = null
+  }
+
+  fillRevealBuffersInstant(parsedAiSuggestion.value || {})
+}
+
+watch(
+  () => props.revealReplayNonce,
+  (n, o) => {
+    if (!n || n === o) return
+    if (props.isAiLoading) return
+    void runOfflineWorkspaceReplay()
+  }
 )
 
 onBeforeUnmount(() => {

@@ -137,6 +137,18 @@ const isTokenExpired = (status, code) => {
   return status === 401 || code === 401
 }
 
+/** 未携带访问令牌时仍应放行的匿名接口（避免会话过期跳转登录后验证码/登录请求被误拦） */
+const isAnonymousAllowedRequest = (config) => {
+  const url = String(config?.url || '')
+  return (
+    url.includes('/captcha/image') ||
+    url.includes('/user/login') ||
+    url.includes('/user/register') ||
+    url.includes('/user/check/username') ||
+    url.includes('/user/check/phone')
+  )
+}
+
 // 请求拦截器
 request.interceptors.request.use(
   config => {
@@ -148,6 +160,9 @@ request.interceptors.request.use(
       if (userStore.token) {
         tokenExpired = false
         isRedirectingToLogin = false
+      } else if (isAnonymousAllowedRequest(config)) {
+        // 登录页拉验证码、提交登录/注册等不应被“过期闸门”挡住（否则需刷新页面才出现图）
+        return config
       } else {
         // 没有token，确实已过期，阻止请求
         return Promise.reject(new Error('Token expired, please login again'))

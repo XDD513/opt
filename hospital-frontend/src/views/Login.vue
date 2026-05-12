@@ -72,7 +72,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, inject, computed, watch } from 'vue'
+import { ref, reactive, inject, computed, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import message from '@/plugins/message'
 import { getHealthProfile } from '@/api/health'
@@ -147,8 +147,11 @@ if (typeof window !== 'undefined') {
 // 兼容“返回登录页但组件不重建”的场景：只要路由进入 /login 就刷新验证码
 watch(
   () => route.fullPath,
-  () => {
-    if (route.path === '/login') refreshCaptcha()
+  async () => {
+    if (route.path === '/login') {
+      await nextTick()
+      refreshCaptcha()
+    }
   },
   { immediate: true }
 )

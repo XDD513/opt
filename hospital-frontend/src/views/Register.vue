@@ -134,14 +134,15 @@
 
 <script setup>
 import message from '@/plugins/message'
-import { ref, reactive, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, reactive, computed, watch, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 import { User, Lock, Avatar, Iphone, Postcard } from '@element-plus/icons-vue'
 import { register, checkUsername, checkPhone, getCaptchaImage } from '@/api/user'
 import { useFormValidation } from '@/composables/useFormValidation'
 
 const router = useRouter()
+const route = useRoute()
 
 // 表单数据
 const registerForm = reactive({
@@ -329,9 +330,17 @@ const goToLogin = () => {
   router.push('/login')
 }
 
-onMounted(() => {
-  refreshCaptcha()
-})
+// 与登录页一致：进入 /register 即拉验证码；避免仅 onMounted 时路由/布局未就绪导致偶发空白
+watch(
+  () => route.fullPath,
+  async () => {
+    if (route.path === '/register') {
+      await nextTick()
+      refreshCaptcha()
+    }
+  },
+  { immediate: true }
+)
 </script>
 
 <style scoped lang="scss">

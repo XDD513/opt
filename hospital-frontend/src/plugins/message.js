@@ -1,5 +1,5 @@
 import { ElMessage } from 'element-plus'
-import { markRaw } from 'vue'
+import { h, markRaw } from 'vue'
 import { Loading } from '@element-plus/icons-vue'
 import { getAppConfig } from '@/config/runtimeConfig'
 
@@ -28,8 +28,8 @@ const normalizeOptions = (options) => {
 const messageQueue = []
 
 const MAX_MESSAGE_COUNT = 2
-// 每个消息的高度（包括间距）
-const MESSAGE_HEIGHT = 80
+// 每个消息的高度（含间距；带标题的 titled 消息为两行，略增高）
+const MESSAGE_HEIGHT = 100
 // 基础偏移量（设置为 100px，避免挡住顶部导航栏，出现在内容区域）
 const BASE_OFFSET = 50
 
@@ -192,6 +192,28 @@ const ensureQueueLimit = () => {
   }
 }
 
+/** 原 ElNotification 场景的「标题 + 正文」，统一用 ElMessage + VNode 展示 */
+const buildTitledVNode = (title, body) => {
+  const t = String(title || '').trim()
+  const b = String(body ?? '')
+  if (!t) return b
+  return h('div', { class: 'hospital-msg-rich' }, [
+    h('div', { class: 'hospital-msg-rich__title' }, t),
+    h('div', { class: 'hospital-msg-rich__body' }, b)
+  ])
+}
+
+const createTitledMessage = (type) => (options) => {
+  const raw = normalizeOptions(options)
+  const method = ElMessage[type] || ElMessage
+  const { title, message: msg, type: _ignored, ...rest } = raw
+  return createMessage(method, type)({
+    ...rest,
+    type,
+    message: buildTitledVNode(title, msg)
+  })
+}
+
 const createMessage = (method, type = 'default') => (options) => {
   // 初始化 Observer
   if (typeof document !== 'undefined') {
@@ -264,6 +286,16 @@ const message = createMessage(ElMessage)
 
 ;['success', 'warning', 'info', 'error'].forEach((type) => {
   message[type] = createMessage(ElMessage[type], type)
+})
+
+/** 带 title + message 的提示（仅 ElMessage，替代原 notify） */
+message.titled = (options) => {
+  const raw = normalizeOptions(options)
+  const type = raw.type || 'info'
+  return createTitledMessage(type)(raw)
+}
+;['success', 'warning', 'info', 'error'].forEach((type) => {
+  message.titled[type] = createTitledMessage(type)
 })
 
 message.close = ElMessage.close
