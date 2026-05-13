@@ -78,13 +78,12 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
         }
 
         try {
-            // 1. 上传到 OSS (优先保存图片)
+            // 1. 上传到 OSS
             String ossUrl = null;
             try {
                 ossUrl = ossService.uploadFile(file, "tongue/");
             } catch (Exception e) {
                 log.error("上传舌诊图片到OSS失败", e);
-                // 不阻断流程，继续进行AI分析，但在生产环境中建议阻断或重试
             }
 
             // 2. 保存临时文件用于 AI 分析
@@ -94,7 +93,6 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
             file.transferTo(dest);
 
             // 3. 调用 AI 服务进行识别
-            // 配置超时时间：15秒（AI 推理可能较慢）
             org.springframework.http.client.SimpleClientHttpRequestFactory factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
             factory.setConnectTimeout(5000);
             factory.setReadTimeout(15000);
@@ -617,18 +615,22 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
                 UserConstitutionTest latest = testMapper.selectById(testId);
                 if (latest != null && latest.getTestResult() != null) {
                     String merged = mergePlansIntoAiSuggestion(latest.getTestResult(), fullSuggestion.toString());
-                    JSONObject root = JSONUtil.parseObj(latest.getTestResult());
-                    root.set("aiSuggestion", merged);
-                    UserConstitutionTest updateTest = new UserConstitutionTest();
-                    updateTest.setId(testId);
-                    updateTest.setTestResult(root.toString());
-                    testMapper.updateById(updateTest);
+                    if (!hasValidPlansAiJson(merged)) {
+                        log.warn("健康计划生成未得到有效 plans JSON，跳过入库以免覆盖有效分析: testId={}", testId);
+                    } else {
+                        JSONObject root = JSONUtil.parseObj(latest.getTestResult());
+                        root.set("aiSuggestion", merged);
+                        UserConstitutionTest updateTest = new UserConstitutionTest();
+                        updateTest.setId(testId);
+                        updateTest.setTestResult(root.toString());
+                        testMapper.updateById(updateTest);
 
-                    // 避免前端随后调用 getTestReport 时读取到旧缓存（导致“闪一下/不显示”）
-                    String cacheKey = "hospital:constitution:report:" + testId;
-                    redisUtil.delete(cacheKey);
+                        // 避免前端随后调用 getTestReport 时读取到旧缓存（导致“闪一下/不显示”）
+                        String cacheKey = "hospital:constitution:report:" + testId;
+                        redisUtil.delete(cacheKey);
 
-                    log.info("健康计划已合并入库: testId={}", testId);
+                        log.info("健康计划已合并入库: testId={}", testId);
+                    }
                 }
             } catch (Exception e) {
                 log.error("合并健康计划入库失败: testId={}", testId, e);
@@ -647,18 +649,22 @@ public class ConstitutionTestServiceImpl implements ConstitutionTestService {
                     });
             try {
                 String normalized = normalizeAnalysisAiJsonRemovePlans(fullSuggestion.toString());
-                JSONObject json = JSONUtil.parseObj(test.getTestResult());
-                json.set("aiSuggestion", normalized);
-                UserConstitutionTest updateTest = new UserConstitutionTest();
-                updateTest.setId(testId);
-                updateTest.setTestResult(json.toString());
-                testMapper.updateById(updateTest);
+                if (!hasValidAnalysisAiJson(normalized)) {
+                    log.warn("深度分析生成未得到有效 analysis（可能为 AI 鉴权失败或空响应），跳过入库: testId={}", testId);
+                } else {
+                    JSONObject json = JSONUtil.parseObj(test.getTestResult());
+                    json.set("aiSuggestion", normalized);
+                    UserConstitutionTest updateTest = new UserConstitutionTest();
+                    updateTest.setId(testId);
+                    updateTest.setTestResult(json.toString());
+                    testMapper.updateById(updateTest);
 
-                // 同样失效 getTestReport 缓存，避免分析/展示内容被旧缓存覆盖
-                String cacheKey = "hospital:constitution:report:" + testId;
-                redisUtil.delete(cacheKey);
+                    // 同样失效 getTestReport 缓存，避免分析/展示内容被旧缓存覆盖
+                    String cacheKey = "hospital:constitution:report:" + testId;
+                    redisUtil.delete(cacheKey);
 
-                log.info("深度分析报告已入库: testId={}", testId);
+                    log.info("深度分析报告已入库: testId={}", testId);
+                }
             } catch (Exception e) {
                 log.error("深度分析报告入库失败: testId={}", testId, e);
             }

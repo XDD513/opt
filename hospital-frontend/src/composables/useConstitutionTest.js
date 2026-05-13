@@ -507,6 +507,25 @@ export function useConstitutionTest() {
   }
 
   /**
+   * 报告中的 healthSuggestion 是否含有效深度分析（与 SmartConstitutionTest 判定一致）
+   */
+  const reportHasValidAnalysis = (hs) => {
+    const s = String(hs || '')
+    if (/"error"\s*:\s*"AI HTTP (401|403)/.test(s)) return false
+    if (/Authentication Fails|invalid_request_error|api key.*invalid/i.test(s)) return false
+    const m = s.match(/"analysis"\s*:\s*"([^"]+)"/)
+    if (m && m[1] && m[1].length >= 40) return true
+    return /体质深度分析/.test(s) && s.length >= 80
+  }
+
+  const reportHasValidPlans = (hs) => {
+    const s = String(hs || '')
+    if (/"error"\s*:\s*"AI HTTP (401|403)/.test(s)) return false
+    if (/Authentication Fails|invalid_request_error|api key.*invalid/i.test(s)) return false
+    return /"plans"\s*:/.test(s) || /"planType"\s*:/.test(s)
+  }
+
+  /**
    * 流式获取 AI 建议
    * @param {string|number} testId
    * @param {'analysis'|'plans'} phase - analysis：深度报告；plans：健康计划（需先完成 analysis）
@@ -594,11 +613,26 @@ export function useConstitutionTest() {
               suggestions: res.data.healthSuggestion ? res.data.healthSuggestion.split('；') : state.testResult.suggestions
             }
             state.streamingAiContent = ''
-          }
-          if (phase === 'analysis') {
-            message.titled.success({ title: '深度分析生成完成', message: '已完成体质深度分析，可继续生成健康计划。' })
-          } else if (phase === 'plans') {
-            message.titled.success({ title: '健康计划生成完成', message: '已生成健康计划与调养建议。' })
+            const hs = state.testResult?.healthSuggestion
+            if (phase === 'analysis') {
+              if (reportHasValidAnalysis(hs)) {
+                message.titled.success({ title: '深度分析生成完成', message: '已完成体质深度分析，可继续生成健康计划。' })
+              } else {
+                message.titled.warning({
+                  title: '深度分析未完成',
+                  message: '未生成有效深度分析（常见原因：服务端 DeepSeek API Key 无效或未配置）。请修正配置后重新点击「开始诊断」。'
+                })
+              }
+            } else if (phase === 'plans') {
+              if (reportHasValidPlans(hs)) {
+                message.titled.success({ title: '健康计划生成完成', message: '已生成健康计划与调养建议。' })
+              } else {
+                message.titled.warning({
+                  title: '健康计划未完成',
+                  message: '未生成有效健康计划。请确认深度分析已成功且 DeepSeek 配置正确后重试。'
+                })
+              }
+            }
           }
         } catch (error) {
           console.error('拉取最终报告失败:', error)
