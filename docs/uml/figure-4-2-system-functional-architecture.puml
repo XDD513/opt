@@ -1,0 +1,113 @@
+@startuml figure_4_2_functional_architecture_horizontal
+title 图 4.2 系统总体功能结构图（横向）\n中医体质辨识与健康管理系统的设计与实现
+
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam shadowing false
+skinparam rectangle {
+  roundCorner 8
+  borderThickness 1
+}
+skinparam ArrowColor #424242
+skinparam nodesep 18
+skinparam ranksep 55
+
+left to right direction
+
+rectangle "中医体质辨识与健康\n管理系统的设计与实现" as ROOT #FFF9C4
+
+skinparam rectangle<<port>> {
+  BackgroundColor #E3F2FD
+  FontStyle bold
+}
+skinparam rectangle<<mod>> {
+  BackgroundColor #FFFFFF
+}
+skinparam rectangle<<admin>> {
+  BackgroundColor #FFF3E0
+  FontStyle bold
+}
+skinparam rectangle<<amod>> {
+  BackgroundColor #FFFDE7
+}
+
+rectangle "患者端（前台）" as L_FE <<port>>
+
+rectangle "患者首页" as f1 <<mod>>
+rectangle "智能体质测试" as f2 <<mod>>
+rectangle "舌象采集与辨识" as f3 <<mod>>
+rectangle "测试结果与历史" as f4 <<mod>>
+rectangle "药膳推荐" as f5 <<mod>>
+rectangle "养生社区" as f6 <<mod>>
+rectangle "健康档案" as f7 <<mod>>
+rectangle "健康计划" as f8 <<mod>>
+rectangle "健康打卡" as f9 <<mod>>
+rectangle "健康统计" as f10 <<mod>>
+rectangle "智能对话" as f11 <<mod>>
+rectangle "全局搜索" as f12 <<mod>>
+rectangle "个人中心" as f13 <<mod>>
+rectangle "资料维护" as f13a <<mod>>
+rectangle "药膳与收藏" as f13b <<mod>>
+rectangle "文章与草稿" as f13c <<mod>>
+rectangle "消息通知" as f13d <<mod>>
+
+rectangle "管理员端（后台）" as L_AD <<admin>>
+
+rectangle "管理首页" as b1 <<amod>>
+rectangle "数据统计" as b2 <<amod>>
+rectangle "角色管理" as b3 <<amod>>
+rectangle "菜单管理" as b4 <<amod>>
+rectangle "系统设置" as b5 <<amod>>
+rectangle "设置生效检测" as b6 <<amod>>
+rectangle "操作日志" as b7 <<amod>>
+rectangle "文章审核" as b8 <<amod>>
+rectangle "文章管理" as b9 <<amod>>
+rectangle "文章通知中心" as b10 <<amod>>
+rectangle "智能对话" as b11 <<amod>>
+rectangle "个人信息" as b12 <<amod>>
+rectangle "修改密码" as b13 <<amod>>
+
+' 根节点 → 两条业务线；患者端在上、管理端在下（同从左向右阅读）
+ROOT -right-> L_FE
+ROOT -right-> L_AD
+L_FE -[hidden]down- L_AD
+
+' 患者端：标题后横向串联各功能模块
+L_FE -right-> f1
+f1 -[hidden]right- f2
+f2 -[hidden]right- f3
+f3 -[hidden]right- f4
+f4 -[hidden]right- f5
+f5 -[hidden]right- f6
+f6 -[hidden]right- f7
+f7 -[hidden]right- f8
+f8 -[hidden]right- f9
+f9 -[hidden]right- f10
+f10 -[hidden]right- f11
+f11 -[hidden]right- f12
+f12 -[hidden]right- f13
+f13 -[hidden]right- f13a
+f13a -[hidden]right- f13b
+f13b -[hidden]right- f13c
+f13c -[hidden]right- f13d
+
+' 管理端：标题后横向串联各管理模块
+L_AD -right-> b1
+b1 -[hidden]right- b2
+b2 -[hidden]right- b3
+b3 -[hidden]right- b4
+b4 -[hidden]right- b5
+b5 -[hidden]right- b6
+b6 -[hidden]right- b7
+b7 -[hidden]right- b8
+b8 -[hidden]right- b9
+b9 -[hidden]right- b10
+b10 -[hidden]right- b11
+b11 -[hidden]right- b12
+b12 -[hidden]right- b13
+
+legend bottom
+  阅读方向从左至右：先根节点，再分「患者端」「管理员端」两条横排功能链；
+  「个人中心」右侧为其子功能（横排）。框内为横排文字，便于论文排版。
+endlegend
+
+@enduml

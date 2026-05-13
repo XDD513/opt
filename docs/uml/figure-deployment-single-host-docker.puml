@@ -1,0 +1,54 @@
+@startuml figure_deployment_single_host_docker
+title 图 系统部署图（单机 · Docker Compose 集中部署）
+
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam shadowing false
+skinparam NodeBackgroundColor #ECEFF1
+skinparam NodeBorderColor #546E7A
+skinparam FrameBackgroundColor #FFFDE7
+skinparam FrameBorderColor #F9A825
+skinparam ComponentBackgroundColor #E3F2FD
+skinparam ComponentBorderColor #1565C0
+skinparam ArrowColor #37474F
+skinparam nodesep 14
+skinparam ranksep 20
+
+actor "用户浏览器" as USER
+
+node "云服务器 / 物理主机（单节点）" as HOST #CFD8DC {
+
+  frame "Docker Engine · Docker Compose 编排" as DOCKER #FFFDE7 {
+
+    component "frontend\nNginx · 静态资源\n宿主机端口 80:80" as C_FE
+    component "backend\nSpring Boot\n宿主机端口 8000:8000" as C_BE
+    component "ai-service\nPython 推理服务\n宿主机端口 5000:5000" as C_AI
+
+    component "mysql\nMySQL 8.0\n3306:3306" as C_DB
+    component "redis\nRedis 7\n6379:6379" as C_RD
+    component "rabbitmq\nAMQP + 管理控制台\n5672 / 15672" as C_MQ
+
+    component "elasticsearch\n7.17 单节点\n9200:9200" as C_ES
+    component "nacos\nv2.2.3 standalone\n8848:8848" as C_NA
+  }
+}
+
+USER -down-> C_FE : HTTPS/HTTP\n访问门户
+
+C_FE -down-> C_BE : 反向代理\n转发 API 请求
+
+C_BE -down-> C_AI : 内网 HTTP\n舌象等 AI 调用
+C_BE -down-> C_DB : JDBC\n业务与 Nacos 库
+C_BE -down-> C_RD : Redis 协议
+C_BE -down-> C_NA : Nacos 注册/配置
+C_BE -down-> C_MQ : AMQP\n（异步场景）
+C_BE -down-> C_ES : REST\n（检索场景）
+
+C_NA -down-> C_DB : JDBC\n持久化 Nacos 元数据
+
+note right of HOST
+  **与仓库 deploy/docker-compose.yml 一致**
+  全部服务以容器形式运行在同一主机上，默认同一 Compose 网络内可通过服务名互通（如 backend → mysql、nacos、ai-service）。
+  对象存储（如 MinIO）若未纳入 Compose，可在图中单独增加节点或后续扩展。
+end note
+
+@enduml

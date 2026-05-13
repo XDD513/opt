@@ -1,0 +1,90 @@
+@startuml figure_overall_system_architecture
+title 图 系统总体架构图\n中医体质辨识与健康管理系统
+
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam shadowing false
+skinparam handwritten false
+skinparam ArrowColor #37474F
+skinparam actor {
+  BackgroundColor #ECEFF1
+  BorderColor #37474F
+}
+skinparam node {
+  BackgroundColor #FAFAFA
+  BorderColor #546E7A
+}
+skinparam database {
+  BackgroundColor #E3F2FD
+  BorderColor #1565C0
+}
+skinparam cloud {
+  BackgroundColor #FFF8E1
+  BorderColor #F57F17
+}
+
+left to right direction
+
+actor "患者用户" as ActPatient
+actor "管理员" as ActAdmin
+
+node "客户端" <<device>> as NodeClient {
+  artifact "Web 浏览器\n(HTTPS)" as Browser
+}
+
+node "展示层" <<executionEnvironment>> as NodeFe {
+  artifact "hospital-frontend\nVue 3 + Element Plus + Vite" as Spa
+  note right of Spa
+    **患者端**：首页、智能体质测试、舌象采集、
+    药膳推荐、养生文章、健康档案与计划、
+    打卡统计、智能对话、个人中心等
+    **管理端**：数据看板、用户/角色/菜单、
+    文章审核与管理、系统设置、操作日志等
+  end note
+}
+
+node "接入层（部署可选）" <<executionEnvironment>> as NodeEdge {
+  artifact "Nginx\n静态资源 / 反向代理 / TLS 终结" as Nginx
+}
+
+node "应用层" <<executionEnvironment>> as NodeApp {
+  artifact "hospital-appointment-system\nSpring Boot + MyBatis-Plus\nSpring Security + JWT" as Boot
+  note bottom of Boot
+    业务接口、权限校验、体质辨识编排、
+    推荐与内容管理、会话与消息、系统配置等
+  end note
+}
+
+node "智能服务层" <<executionEnvironment>> as NodeAi {
+  artifact "ai-service\nFlask + ONNX Runtime" as FlaskAi
+  cloud "DeepSeek API\n大模型健康解读" as DeepSeek
+}
+
+database "MySQL 8.0\n业务与持久化数据" as DbMysql
+storage "Redis\n缓存 / 会话 / 分布式锁" as Redis
+queue "RabbitMQ\n异步消息" as Rmq
+artifact "Nacos\n配置中心" as Nacos
+
+' --- 关系 ---
+ActPatient --> Browser : 使用
+ActAdmin --> Browser
+
+Browser --> Spa : 访问
+Spa --> Nginx : 生产环境
+Spa ..> Boot : 开发环境可直连\n/api
+
+Nginx --> Boot : 反向代理\nREST / WebSocket
+
+Boot --> DbMysql : JDBC
+Boot --> Redis
+Boot --> Rmq
+Boot --> Nacos : 配置
+Boot --> FlaskAi : HTTP\n舌象检测等
+Boot --> DeepSeek : HTTPS\n体质报告解读等
+FlaskAi ..> DeepSeek : 视业务\n编排调用
+
+legend
+  实线：主要访问与数据流
+  虚线：可选部署路径（如开发环境前端直连后端）或可选调用链
+endlegend
+
+@enduml

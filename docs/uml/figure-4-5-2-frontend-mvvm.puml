@@ -1,0 +1,52 @@
+@startuml figure_4_5_2_frontend_mvvm
+title 图 4.5-2 基于 Vue 3 的 MVVM 分层与数据流\n（hospital-frontend）
+
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam ArrowColor #37474F
+skinparam ranksep 28
+
+top to bottom direction
+
+package "View（视图）\n*.vue 中 template" #E8F5E9 {
+  artifact "DOM 与 Element Plus 组件\n用户可见界面" as V
+}
+
+package "ViewModel（视图模型）\n*.vue 中 script setup + composables" #E3F2FD {
+  component "响应式状态 ref / reactive / computed\n事件处理、页面编排" as VM
+}
+
+package "Model（模型）\n数据获取与全局状态" #FFF8E1 {
+  together {
+    component "api/*.js\nAxios 封装" as API
+    component "stores/*.js\nPinia" as STORE
+  }
+  API -[hidden]right- STORE
+}
+
+package "服务端\nSpring Boot" #FCE4EC {
+  artifact "REST JSON API" as SERVER
+}
+
+V -down-> VM : 模板绑定 / 事件
+VM -down-> API : 调用接口
+VM -down-> STORE : 读写全局状态
+API -down-> SERVER : HTTP\n(JSON)
+
+note right of V
+  **MVVM**：View 只声明界面结构，
+  不手写 DOM 更新逻辑。
+end note
+
+note right of VM
+  **MVVM**：ViewModel 连接 View 与 Model，
+  通过响应式数据驱动界面刷新。
+end note
+
+note bottom of SERVER
+  **闭环**：与图 4.5-1 中 **Controller** 对接；
+  响应经 Axios 回到 ViewModel，再反映到 View。
+end note
+
+@enduml

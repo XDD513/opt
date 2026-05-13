@@ -30,7 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     @Autowired
     private JwtUtil jwtUtil;
-    
+
     @Autowired
     private RedisUtil redisUtil;
 
@@ -63,12 +63,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         
-        // WebSocket相关路径不需要JWT验证（SockJS的info端点等）
         if (requestURI.startsWith("/ws/")) {
             filterChain.doFilter(request, response);
             return;
         }
-        
+
         // 获取token
         String token = jwtUtil.getTokenFromRequest(request);
 
@@ -150,13 +149,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         // 创建认证对象
-        UsernamePasswordAuthenticationToken authentication = 
+        UsernamePasswordAuthenticationToken authentication =
             new UsernamePasswordAuthenticationToken(username, null, new ArrayList<>());
         authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-        
+
         // 将用户信息存储到SecurityContext中
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        
+
         // 将用户信息放入请求属性中
         request.setAttribute("userId", userId);
         request.setAttribute("roleType", roleType);

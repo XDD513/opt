@@ -37,7 +37,6 @@ public class SecurityConfig {
 
     /**
      * 配置安全过滤器链
-     * 使用 SecurityFilterChain Bean 替代过时的 WebSecurityConfigurerAdapter
      */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {

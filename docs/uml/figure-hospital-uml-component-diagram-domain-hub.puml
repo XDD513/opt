@@ -1,0 +1,124 @@
+@startuml figure_hospital_uml_component_domain_hub
+title 图 医院中医体质辨识与健康管理系统 UML 组件图\n（领域枢纽式 · 与教学示例「中心枢纽 + 虚线依赖」同构）
+
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam ArrowColor #1565C0
+skinparam packageStyle rectangle
+skinparam component {
+  BackgroundColor #E3F2FD
+  BorderColor #1565C0
+}
+skinparam nodesep 18
+skinparam ranksep 20
+
+left to right direction
+
+package "持久化技术层" #ECEFF1 {
+  component "数据访问与 ORM\nMyBatis-Plus · Mapper XML" as ORM #BBDEFB
+  component "MySQL 关系型数据库" as DB #C5CAE6
+  ORM ..> DB : «依赖»
+}
+
+package "左侧业务域（子构件 → 领域构件 → 核心）" #FFFFFF {
+  together {
+    component "问卷与测试执行" as L1a
+    component "舌象上传与 AI 辨识" as L1b
+    component "报告与历史查询" as L1c
+    L1a -[hidden]down- L1b
+    L1b -[hidden]down- L1c
+  }
+  component "体质辨识" as L1 <<subsystem>>
+  L1a ..> L1
+  L1b ..> L1
+  L1c ..> L1
+
+  together {
+    component "注册与登录认证" as L2a
+    component "患者与个人信息" as L2b
+    component "角色菜单与权限" as L2c
+    L2a -[hidden]down- L2b
+    L2b -[hidden]down- L2c
+  }
+  component "系统用户与安全" as L2 <<subsystem>>
+  L2a ..> L2
+  L2b ..> L2
+  L2c ..> L2
+
+  together {
+    component "健康档案维护" as L3a
+    component "打卡与健康计划" as L3b
+    component "指标与统计视图" as L3c
+    L3a -[hidden]down- L3b
+    L3b -[hidden]down- L3c
+  }
+  component "健康管理" as L3 <<subsystem>>
+  L3a ..> L3
+  L3b ..> L3
+  L3c ..> L3
+}
+
+package "平台核心" #FFFFFF {
+  component "医院中医健康管理\n平台核心构件\nController 编排 · Service 业务逻辑" as CORE #90CAF9
+}
+
+package "右侧业务域（核心 → 领域构件 → 子构件）" #FFFFFF {
+  component "预约与就诊服务" as R1 <<subsystem>>
+  together {
+    component "排班与号源查询" as R1a
+    component "预约提交与改期" as R1b
+    component "支付与状态跟踪" as R1c
+    R1a -[hidden]down- R1b
+    R1b -[hidden]down- R1c
+  }
+  CORE ..> R1
+  R1 ..> R1a
+  R1 ..> R1b
+  R1 ..> R1c
+
+  component "药膳与智能推荐" as R2 <<subsystem>>
+  together {
+    component "药膳方剂检索" as R2a
+    component "AI 养生方案推荐" as R2b
+    component "点赞收藏与互动" as R2c
+    R2a -[hidden]down- R2b
+    R2b -[hidden]down- R2c
+  }
+  CORE ..> R2
+  R2 ..> R2a
+  R2 ..> R2b
+  R2 ..> R2c
+
+  component "社区内容与医患对话" as R3 <<subsystem>>
+  together {
+    component "文章流与评论收藏" as R3a
+    component "医患会话与消息" as R3b
+    component "通知与审核管理" as R3c
+    R3a -[hidden]down- R3b
+    R3b -[hidden]down- R3c
+  }
+  CORE ..> R3
+  R3 ..> R3a
+  R3 ..> R3b
+  R3 ..> R3c
+}
+
+' 左侧三组领域构件依赖核心
+L1 ..> CORE
+L2 ..> CORE
+L3 ..> CORE
+
+' 核心依赖 ORM（类比示例中 DBManager → JDBC；此处为核心依赖数据访问层）
+CORE ..> ORM : «依赖»
+
+legend bottom
+  **画法说明（与您提供的 UML 组件图教学示例一致）**
+  * 构件采用 **UML 组件符号**（矩形左侧带「小耳朵」）。
+  * **虚线箭头** 表示 **依赖关系**。
+  * **左侧**：细粒度子构件先汇聚到 **领域构件**，再统一依赖 **平台核心**。
+  * **右侧**：由 **平台核心** 依赖各 **领域构件**，再展开到对外子能力。
+  * **上方 / 下方**：**ORM** 与 **MySQL** 对应持久化；与论文 4.6 中 *mapper 数据访问构件* 一致。
+endlegend
+
+@enduml

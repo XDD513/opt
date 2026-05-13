@@ -1,0 +1,86 @@
+@startuml figure_4_27_ecommerce_reference_system_overall_components
+title 图 4.27 系统总体构件图\n基于 SpringBoot 的跨境电商平台设计与实现
+
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam ArrowColor #616161
+skinparam nodesep 32
+skinparam ranksep 22
+
+' 与参考图同构：左 1 个核心构件 | 中 商家·管理员·用户 | 右 业务功能列（自上而下顺序与参考图一致）
+left to right direction
+
+component "基于 SpringBoot 的\n跨境电商平台\n设计与实现" as CORE #FFE0B2
+
+together {
+  component "商家" as MER
+  component "管理员" as ADM
+  component "用户" as USR
+  MER -[hidden]down- ADM
+  ADM -[hidden]down- USR
+}
+
+together {
+  component "个人中心" as F1
+  component "活动管理" as F2
+  component "商品管理" as F3
+  component "优惠券管理" as F4
+  component "轮播图管理" as F5
+  component "新闻通知管理" as F6
+  component "系统介绍管理" as F7
+  component "订单管理" as F8
+  component "评论管理" as F9
+  component "购物车" as F10
+  F1 -[hidden]down- F2
+  F2 -[hidden]down- F3
+  F3 -[hidden]down- F4
+  F4 -[hidden]down- F5
+  F5 -[hidden]down- F6
+  F6 -[hidden]down- F7
+  F7 -[hidden]down- F8
+  F8 -[hidden]down- F9
+  F9 -[hidden]down- F10
+}
+
+' 三角色 → 核心平台
+MER ..> CORE
+ADM ..> CORE
+USR ..> CORE
+
+' 业务构件 → 角色（与参考图箭头一致）
+F1 ..> MER
+F1 ..> ADM
+F1 ..> USR
+
+F2 ..> MER
+F2 ..> ADM
+
+F3 ..> MER
+F3 ..> ADM
+
+F4 ..> MER
+F4 ..> ADM
+
+F5 ..> ADM
+
+F6 ..> ADM
+
+F7 ..> ADM
+
+F8 ..> MER
+F8 ..> ADM
+F8 ..> USR
+
+F9 ..> MER
+F9 ..> ADM
+F9 ..> USR
+
+F10 ..> USR
+
+legend bottom
+  说明：本图与参考「系统总体构件图」**同构**——左为核心平台，中为 **商家 / 管理员 / 用户**，右为十个业务功能构件（**订单管理 → 评论管理 → 购物车** 自下而上阅读时位于列末）。
+  **虚线** 为 UML **依赖**：角色依赖核心平台；业务构件依赖对应使用方角色。
+endlegend
+
+@enduml

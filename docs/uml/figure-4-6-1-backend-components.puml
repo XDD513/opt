@@ -1,0 +1,36 @@
+@startuml figure_4_6_1_backend_components
+title 图 4.6-1 后端逻辑构件划分\n（单体工程中的包级构件 · 与论文「模块化」表述对应）
+
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+package "hospital-appointment-system\n（单 Maven 模块）" {
+  component [启动与配置\nHospitalApplication\napplication.yml] as BOOT <<artifact>>
+  component [接入与接口构件\ncontroller.*\nREST / WebSocket 入口] as CTRL <<api>>
+  component [业务服务构件\nservice / service.impl\n体质·文章·健康·对话…] as BIZ <<subsystem>>
+  component [数据访问构件\nmapper.*\nresources/mapper/*.xml] as DAO <<subsystem>>
+  component [领域模型构件\nentity / dto] as MODEL <<subsystem>>
+  component [横切与框架构件\nconfig\nSecurity·JWT·WebSocket…] as FW <<framework>>
+  component [通用基础构件\ncommon / util / exception] as COMMON <<layer>>
+}
+
+BOOT ..> FW : 启动加载
+BOOT ..> CTRL
+CTRL ..> FW
+CTRL --> BIZ : 依赖
+BIZ --> DAO
+BIZ --> MODEL
+BIZ ..> FW : 安全、缓存、消息等
+DAO --> MODEL
+CTRL ..> COMMON
+BIZ ..> COMMON
+DAO ..> COMMON
+
+note bottom of COMMON
+  **与论文 4.6.1 多 Maven 子模块写法的关系**
+  当前仓库为 **单模块多分包**，未拆成独立 `common.jar`、`api.jar` 等；
+  论文中的 *api / business / mapper* 等可对应上表 **逻辑构件**；若答辩需要「物理多模块」，可在后续迭代中按包边界拆 Maven module，职责划分与本图一致。
+end note
+
+@enduml

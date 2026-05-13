@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>后端分层架构图（还原）</title>
+  <style>
+    :root {
+      --bg-page: #e8e8ea;
+      --border: #b0b0b8;
+      --inner-bg: #f0f0f2;
+      --box-bg: #ffffff;
+      --font-layer: 24px;
+      --font-box: 18px;
+      --font-small: 17px;
+      --arrow-color: #333;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: var(--bg-page);
+      color: #222;
+    }
+    .diagram {
+      max-width: 980px;
+      margin: 0 auto;
+      background: var(--bg-page);
+      padding: 16px;
+    }
+    .layer {
+      border: 2px solid var(--border);
+      background: var(--box-bg);
+      padding: 18px 20px 22px;
+      margin-bottom: 0;
+      position: relative;
+    }
+    .layer-title {
+      font-size: var(--font-layer);
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 14px;
+      letter-spacing: 0.02em;
+    }
+    .inner-box {
+      border: 1px solid var(--border);
+      background: var(--inner-bg);
+      padding: 14px 16px;
+      font-size: var(--font-box);
+      text-align: center;
+      line-height: 1.45;
+    }
+    .arrow-down {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 10px 0 14px;
+      font-size: 28px;
+      color: var(--arrow-color);
+      font-weight: 700;
+      line-height: 1;
+    }
+    .row-split {
+      display: flex;
+      gap: 24px;
+      align-items: stretch;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .col {
+      flex: 1;
+      min-width: 280px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .col-title {
+      font-size: var(--font-layer);
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 8px;
+    }
+    .stack-sm .inner-box + .inner-box { margin-top: 10px; }
+    .note-print {
+      text-align: center;
+      font-size: var(--font-small);
+      color: #555;
+      margin-top: 20px;
+    }
+    @media print {
+      body { background: #fff; padding: 12px; }
+      .diagram { max-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="diagram" aria-label="后端分层架构">
+    <!-- Layer 1 -->
+    <div class="layer">
+      <div class="layer-title">前端 / 第三方调用方</div>
+      <div class="inner-box">&quot;HTTP/HTTPS - JSON&quot;</div>
+    </div>
+    <div class="arrow-down">↓</div>
+
+    <!-- Layer 2 -->
+    <div class="layer">
+      <div class="layer-title">表现层 Controller</div>
+      <div class="inner-box">
+        &quot;@RestController / @RequestMapping<br />参数校验 · 权限 · 统一返回&quot;
+      </div>
+    </div>
+    <div class="arrow-down">↓</div>
+
+    <!-- Layer 3: 左右两列 -->
+    <div class="layer">
+      <div class="row-split">
+        <div class="col">
+          <div class="col-title">接口契约</div>
+          <div class="stack-sm">
+            <div class="inner-box">&quot;DTO (request / response)&quot;</div>
+            <div class="inner-box">&quot;Result&lt;T&gt; 统一响应封装&quot;</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="col-title">业务层 Service</div>
+          <div class="stack-sm">
+            <div class="inner-box">&quot;Service 接口&quot;</div>
+            <div class="inner-box">&quot;ServiceImpl 实现类&quot;</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="arrow-down">↓</div>
+
+    <!-- Layer 4 -->
+    <div class="layer">
+      <div class="row-split">
+        <div class="col">
+          <div class="col-title">数据访问层 Mapper</div>
+          <div class="stack-sm">
+            <div class="inner-box">&quot;Mapper 接口 (MyBatis-Plus BaseMapper)&quot;</div>
+            <div class="arrow-down" style="padding: 6px 0;">↓</div>
+            <div class="inner-box">&quot;自定义 SQL · XML（如有）&quot;</div>
+          </div>
+        </div>
+        <div class="col">
+          <div class="col-title">领域模型 Entity</div>
+          <div class="inner-box">&quot;entity 包 — 与表映射的实体类&quot;</div>
+        </div>
+      </div>
+    </div>
+    <div class="arrow-down">↓</div>
+
+    <!-- Layer 5 -->
+    <div class="layer">
+      <div class="layer-title">数据存储</div>
+      <div class="inner-box" style="display: flex; align-items: center; justify-content: center; gap: 16px;">
+        <span style="font-size: 42px; line-height: 1;" aria-hidden="true">🗄</span>
+        <span>&quot;关系型数据库&quot;</span>
+      </div>
+    </div>
+
+    <p class="note-print">字号已放大：层标题约 24px，框内约 18px。打印请使用浏览器「打印 → 另存为 PDF」。</p>
+  </div>
+</body>
+</html>

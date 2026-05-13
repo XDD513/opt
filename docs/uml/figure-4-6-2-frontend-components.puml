@@ -1,0 +1,41 @@
+@startuml figure_4_6_2_frontend_components
+title 图 4.6-2 前端逻辑构件划分\n（Vue 3 工程目录与职责）
+
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam shadowing false
+skinparam componentStyle rectangle
+
+package "hospital-frontend" {
+  component [布局构件\nlayout/\nPatientLayout · AdminLayout] as LAYOUT <<subsystem>>
+  component [路由构件\nrouter/index.js\n权限与标题] as ROUTER <<subsystem>>
+  component [页面构件\nviews/\n患者端 · 管理端 · 登录注册] as PAGES <<subsystem>>
+  component [功能 / 业务组件\ncomponents/patient/*\ncomponents/admin/*\n体质·文章·对话等] as FEAT <<subsystem>>
+  component [组合式逻辑\ncomposables/*.js\n可复用状态与流程] as COMP <<layer>>
+  component [接口构件\napi/*.js\nAxios 调用后端] as API <<subsystem>>
+  component [状态构件\nstores/*.js\nPinia] as STORE <<subsystem>>
+  component [通用交互\nplugins/\nmessage、通知等] as PLUGIN <<layer>>
+  component [工具构件\nutils/*.js\n格式化、校验、URL] as UTIL <<layer>>
+  component [静态与样式\nassets · styles] as ASSET <<artifact>>
+}
+
+LAYOUT --> PAGES : 承载
+ROUTER --> PAGES : 映射
+PAGES --> FEAT : 组合
+PAGES --> COMP
+PAGES --> API
+PAGES --> STORE
+PAGES ..> PLUGIN
+PAGES ..> UTIL
+PAGES ..> ASSET
+FEAT --> API
+FEAT --> STORE
+FEAT --> COMP
+COMP --> API
+COMP --> STORE
+
+note bottom of API
+  **说明**：与论文 4.6.2 对应——*layout* 布局、*views* 页面、*components* 功能与通用 UI、
+  *api+stores* 对应 Model 侧数据获取与全局状态；**无独立「预约订单」前端路由时**，论文中该条可改为「健康计划 / 打卡」等本项目实际模块。
+end note
+
+@enduml

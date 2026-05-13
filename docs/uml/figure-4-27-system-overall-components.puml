@@ -1,0 +1,71 @@
+@startuml figure_4_27_system_overall_components
+title 图 4.27 系统总体构件图\n中医体质辨识与健康管理系统
+
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam shadowing false
+skinparam componentStyle rectangle
+skinparam ArrowColor #616161
+skinparam nodesep 28
+skinparam ranksep 18
+
+' 与教材图 4.27 同构：左 1 个核心构件 | 中 角色列 | 右 业务功能列；虚线为依赖
+left to right direction
+
+component "基于 Spring Boot 的\n中医体质辨识与健康管理系统\n设计与实现" as CORE #FFE0B2
+
+together {
+  component "患者用户" as U
+  component "系统管理员" as ADM
+  U -[hidden]down- ADM
+}
+
+together {
+  component "个人中心" as F1
+  component "体质辨识与测试" as F2
+  component "舌象采集与 AI 辨识" as F3
+  component "药膳与穴位推荐" as F4
+  component "养生社区与文章" as F5
+  component "健康档案·计划与打卡" as F6
+  component "智能对话（LLM）" as F7
+  component "用户与角色菜单管理" as F8
+  component "文章审核与通知管理" as F9
+  component "系统设置与操作日志" as F10
+  F1 -[hidden]down- F2
+  F2 -[hidden]down- F3
+  F3 -[hidden]down- F4
+  F4 -[hidden]down- F5
+  F5 -[hidden]down- F6
+  F6 -[hidden]down- F7
+  F7 -[hidden]down- F8
+  F8 -[hidden]down- F9
+  F9 -[hidden]down- F10
+}
+
+' 角色依赖核心系统（与教材一致：角色 → Spring Boot 核心）
+U ..> CORE
+ADM ..> CORE
+
+' 业务功能构件依赖角色（谁使用该构件）
+F1 ..> U
+F1 ..> ADM
+
+F2 ..> U
+F3 ..> U
+F4 ..> U
+F5 ..> U
+F6 ..> U
+
+F7 ..> U
+F7 ..> ADM
+
+F8 ..> ADM
+F9 ..> ADM
+F10 ..> ADM
+
+legend bottom
+  说明：本系统为 **患者用户 / 系统管理员** 双角色（教材示例「商家」在本项目中不存在）。
+  左侧为 **唯一 Spring Boot 核心构件**；右侧为 **业务功能构件**；虚线表示 **UML 依赖**。
+  患者 / 管理端界面由 **Vue 3** 实现，经 HTTP 与核心系统交互。
+endlegend
+
+@enduml

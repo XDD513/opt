@@ -135,8 +135,12 @@ function generateRealName(index, usedRealNames) {
   const family = ["王", "李", "张", "刘", "陈", "杨", "赵", "黄", "周", "吴", "徐", "孙", "马", "朱", "胡"];
   const given1 = ["沐", "若", "景", "清", "知", "以", "向", "予", "言", "初"];
   const given2 = ["川", "岚", "禾", "洲", "澄", "屿", "溪", "棠", "珩", "砚"];
+  /** 后端校验：仅限汉字及中间点，禁止数字字母（见 RegisterRequest.realName） */
+  const tail = "甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥春夏秋冬东南西北";
   while (true) {
-    const n = `${pick(family)}${pick(given1)}${pick(given2)}${String(index).padStart(4, "0")}`;
+    const a = index % tail.length;
+    const b = Math.floor(index / tail.length) % tail.length;
+    const n = `${pick(family)}${pick(given1)}${pick(given2)}${tail[a]}${tail[b]}`;
     if (!usedRealNames.has(n)) {
       usedRealNames.add(n);
       return n;

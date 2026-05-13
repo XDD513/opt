@@ -1,0 +1,10 @@
+[
+  {
+    "method": "POST",
+    "path": "/predict_v2",
+    "name": "ai_tongue_predict_v2",
+    "file_path": "ai-service/test_tongue.jpg",
+    "file_field": "file"
+  }
+]
+

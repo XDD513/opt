@@ -18,9 +18,16 @@ logs/
 .DS_Store
 Thumbs.db
 
+# OCR 训练数据（体积大，按需本地下载）
+acceptance-tests/*.traineddata
+
 # IDE
 .idea/
 .vscode/
+.cursor/
+.augment/
+.rules/
+.vercel/
 *.iml
 *.swp
 *.swo

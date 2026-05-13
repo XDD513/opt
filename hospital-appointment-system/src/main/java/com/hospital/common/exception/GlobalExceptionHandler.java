@@ -39,10 +39,10 @@ public class GlobalExceptionHandler {
         String traceId = generateTraceId();
         String uri = request.getRequestURI();
         String method = request.getMethod();
-        
-        log.error("业务异常 [traceId={}, method={}, uri={}, code={}, message={}]", 
+
+        log.error("业务异常 [traceId={}, method={}, uri={}, code={}, message={}]",
                 traceId, method, uri, e.getCode(), e.getMessage(), e);
-        
+
         return Result.error(e.getCode(), e.getMessage());
     }
 
@@ -69,7 +69,7 @@ public class GlobalExceptionHandler {
         String traceId = generateTraceId();
         String uri = request.getRequestURI();
         String method = request.getMethod();
-        
+
         StringBuilder errorMessage = new StringBuilder();
         for (FieldError error : fieldErrors) {
             errorMessage.append(error.getField())
@@ -77,10 +77,10 @@ public class GlobalExceptionHandler {
                     .append(error.getDefaultMessage())
                     .append("; ");
         }
-        
-        log.error("{} [traceId={}, method={}, uri={}, message={}]", 
+
+        log.error("{} [traceId={}, method={}, uri={}, message={}]",
                 errorType, traceId, method, uri, errorMessage);
-        
+
         return Result.error(ResultCode.BAD_REQUEST.getCode(), errorMessage.toString());
     }
 
@@ -92,7 +92,7 @@ public class GlobalExceptionHandler {
         String traceId = generateTraceId();
         String uri = request.getRequestURI();
         String method = request.getMethod();
-        
+
         log.error("空指针异常 [traceId={}, method={}, uri={}]", traceId, method, uri, e);
         return Result.error(ResultCode.INTERNAL_SERVER_ERROR.getCode(), "系统内部错误");
     }
@@ -105,10 +105,10 @@ public class GlobalExceptionHandler {
         String traceId = generateTraceId();
         String uri = request.getRequestURI();
         String method = request.getMethod();
-        
-        log.error("非法参数异常 [traceId={}, method={}, uri={}, message={}]", 
+
+        log.error("非法参数异常 [traceId={}, method={}, uri={}, message={}]",
                 traceId, method, uri, e.getMessage(), e);
-        
+
         return Result.error(ResultCode.PARAM_ERROR.getCode(), e.getMessage());
     }
 
@@ -120,11 +120,10 @@ public class GlobalExceptionHandler {
         String traceId = generateTraceId();
         String uri = request.getRequestURI();
         String method = request.getMethod();
-        
-        log.error("系统异常 [traceId={}, method={}, uri={}, exception={}, message={}]", 
+
+        log.error("系统异常 [traceId={}, method={}, uri={}, exception={}, message={}]",
                 traceId, method, uri, e.getClass().getSimpleName(), e.getMessage(), e);
-        
+
         return Result.error(ResultCode.INTERNAL_SERVER_ERROR.getCode(), "系统错误，请稍后重试");
     }
 }
-

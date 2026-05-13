@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>前端 MVVM 架构图（还原）</title>
+  <style>
+    :root {
+      --bg-page: #e8e8ea;
+      --border: #b0b0b8;
+      --inner-bg: #f0f0f2;
+      --box-bg: #ffffff;
+      --font-layer: 24px;
+      --font-box: 18px;
+      --font-small: 17px;
+      --arrow-solid: #1565c0;
+      --arrow-dash: #1565c0;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: "Microsoft YaHei UI", "Microsoft YaHei", "PingFang SC", sans-serif;
+      background: var(--bg-page);
+      color: #222;
+    }
+    .diagram {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+    .layer {
+      border: 2px solid var(--border);
+      background: var(--box-bg);
+      padding: 18px 20px 22px;
+      margin-bottom: 0;
+    }
+    .layer-title {
+      font-size: var(--font-layer);
+      font-weight: 700;
+      text-align: center;
+      margin-bottom: 16px;
+      letter-spacing: 0.02em;
+    }
+    .inner-box {
+      border: 1px solid var(--border);
+      background: var(--inner-bg);
+      padding: 12px 14px;
+      font-size: var(--font-box);
+      text-align: center;
+      line-height: 1.45;
+    }
+    .arrow-down {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      padding: 8px 0 12px;
+      font-size: 26px;
+      color: var(--arrow-solid);
+      font-weight: 700;
+      line-height: 1;
+    }
+    .arrow-down.dashed {
+      border-bottom: 3px dashed var(--arrow-dash);
+      color: var(--arrow-dash);
+      font-size: 14px;
+      font-weight: 600;
+      padding: 10px 0;
+    }
+    /* View: top row + bottom template */
+    .view-top {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+    .view-top > .inner-box { flex: 1; }
+    .view-bottom .inner-box { max-width: 520px; margin: 0 auto; }
+
+    /* ViewModel */
+    .vm-main .inner-box { margin-bottom: 14px; }
+    .vm-row {
+      display: flex;
+      gap: 16px;
+    }
+    .vm-row > .inner-box { flex: 1; }
+
+    /* Model */
+    .model-top {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+    .model-top > .inner-box { flex: 1; }
+    .model-bottom {
+      display: flex;
+      gap: 16px;
+    }
+    .model-bottom > .inner-box { flex: 1; }
+
+    .backend-layer .inner-box {
+      max-width: 420px;
+      margin: 0 auto;
+    }
+    .connector-strip {
+      margin: 4px 0 8px;
+      padding: 0 8px;
+    }
+    .note-print {
+      text-align: center;
+      font-size: var(--font-small);
+      color: #555;
+      margin-top: 20px;
+    }
+    @media print {
+      body { background: #fff; }
+    }
+  </style>
+</head>
+<body>
+  <div class="diagram" aria-label="Vue MVVM 架构">
+    <!-- View -->
+    <div class="layer">
+      <div class="layer-title">View 视图层</div>
+      <div class="view-top">
+        <div class="inner-box">&quot;views 页面路由视图&quot;</div>
+        <div class="inner-box">&quot;components 可复用组件&quot;</div>
+      </div>
+      <div class="arrow-down">↓</div>
+      <div class="view-bottom">
+        <div class="inner-box">&quot;模板 template · 样式 · 用户事件&quot;</div>
+      </div>
+    </div>
+    <div class="arrow-down">↓</div>
+
+    <!-- ViewModel -->
+    <div class="layer">
+      <div class="layer-title">ViewModel 视图模型层</div>
+      <div class="vm-main">
+        <div class="inner-box">&quot;Vue 组件实例 script setup&quot;</div>
+      </div>
+      <div class="arrow-down">↓</div>
+      <div class="vm-row">
+        <div class="inner-box">&quot;ref / reactive / computed&quot;</div>
+        <div class="inner-box">&quot;事件处理 · 业务流程编排&quot;</div>
+      </div>
+    </div>
+
+    <!-- 跨层连线示意（对应原图：实线事件→api，虚线实例→Pinia） -->
+    <div class="connector-strip" aria-hidden="true">
+      <svg width="100%" height="72" viewBox="0 0 880 72" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+            <polygon points="0 0, 10 3, 0 6" fill="#1565c0" />
+          </marker>
+        </defs>
+        <!-- 事件处理 → api：自右上偏左指向 Model 左框上方 -->
+        <path d="M 420 8 L 180 58" stroke="#1565c0" stroke-width="2.5" fill="none" marker-end="url(#arrowBlue)" />
+        <text x="240" y="38" font-size="17" fill="#1565c0" font-family="Microsoft YaHei UI,sans-serif">事件处理 → api</text>
+        <!-- script setup → Pinia：虚线 -->
+        <path d="M 520 8 L 700 58" stroke="#1565c0" stroke-width="2.5" fill="none" stroke-dasharray="8 6" />
+        <polygon points="700,58 706,52 706,64" fill="#1565c0" />
+        <text x="560" y="42" font-size="17" fill="#1565c0" font-family="Microsoft YaHei UI,sans-serif">script setup ⇢ Pinia</text>
+      </svg>
+    </div>
+
+    <!-- Model -->
+    <div class="layer">
+      <div class="layer-title">Model 模型层</div>
+      <div class="model-top">
+        <div class="inner-box">&quot;api 模块（按业务拆分 user / health / article 等）&quot;</div>
+        <div class="inner-box">&quot;Pinia stores（user / patient / admin 等）&quot;</div>
+      </div>
+      <div class="arrow-down">↓</div>
+      <div class="model-bottom">
+        <div class="inner-box">&quot;request.js — Axios 实例与拦截器&quot;</div>
+        <div class="inner-box">&quot;localStorage 等持久化（如 token）&quot;</div>
+      </div>
+    </div>
+    <div class="arrow-down">↓</div>
+
+    <!-- Backend -->
+    <div class="layer backend-layer">
+      <div class="layer-title">后端 REST API</div>
+      <div class="inner-box">&quot;JSON — Result 统一结构&quot;</div>
+    </div>
+
+    <p class="note-print">
+      自上而下粗箭头为层间数据流；中层 SVG 为「事件处理→api」「script setup⇢Pinia」跨层关系示意。字号：层标题约 24px，框内约 18px。导出：浏览器打印为 PDF 或整页截图。
+    </p>
+  </div>
+</body>
+</html>

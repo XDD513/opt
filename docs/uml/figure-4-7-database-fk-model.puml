@@ -1,0 +1,120 @@
+@startuml figure_4_7_database_fk_model
+title 图 4.7 系统表总体外键关联模型图\n（中医体质辨识与健康管理系统 · 核心表）
+
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam shadowing false
+skinparam linetype ortho
+skinparam ArrowColor #424242
+skinparam roundcorner 6
+
+skinparam entity {
+  BackgroundColor #FFFFFF
+  BorderColor #1565C0
+}
+skinparam entity<<core>> {
+  BorderColor #0D47A1
+  FontColor #0D47A1
+}
+
+hide circle
+hide methods
+hide stereotypes
+
+left to right direction
+
+entity "tcm_user\n用户表" as T_USER <<core>> {
+  * id : BIGINT <<PK>>
+  --
+  username : VARCHAR(64)
+  password : VARCHAR(256)
+  phone : VARCHAR(20)
+  real_name : VARCHAR(50)
+  role_type : INT
+  status : TINYINT
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity "conversation\n会话表" as T_CONV {
+  * id : BIGINT <<PK>>
+  --
+  patient_id : BIGINT <<FK>>
+  conversation_type : VARCHAR(32)
+  participant1_user_id : BIGINT <<FK>>
+  participant1_role : VARCHAR(32)
+  participant2_user_id : BIGINT <<FK>>
+  participant2_role : VARCHAR(32)
+  title : VARCHAR(255)
+  summary : VARCHAR(1024)
+  last_message_preview : VARCHAR(512)
+  last_message_time : DATETIME
+  unread_for_patient : INT
+  unread_for_participant1 : INT
+  unread_for_participant2 : INT
+  status : VARCHAR(32)
+  deleted_by_patient : TINYINT
+  deleted_by_participant1 : TINYINT
+  deleted_by_participant2 : TINYINT
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity "conversation_message\n会话消息表" as T_MSG {
+  * id : BIGINT <<PK>>
+  --
+  conversation_id : BIGINT <<FK>>
+  sender_id : BIGINT <<FK>>
+  sender_role : VARCHAR(32)
+  content : TEXT
+  sent_at : DATETIME
+  created_at : DATETIME
+}
+
+entity "user_health_profile\n用户健康档案表" as T_PROFILE {
+  * id : BIGINT <<PK>>
+  --
+  user_id : BIGINT <<FK>>
+  height : INT
+  weight : DOUBLE
+  bmi : DOUBLE
+  blood_type : VARCHAR(10)
+  current_constitution : VARCHAR(64)
+  secondary_constitution : VARCHAR(64)
+  health_goals : VARCHAR(500)
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity "user_constitution_test\n用户体质测试表" as T_TEST {
+  * id : BIGINT <<PK>>
+  --
+  user_id : BIGINT <<FK>>
+  test_date : DATETIME
+  primary_constitution : VARCHAR(32)
+  secondary_constitution : VARCHAR(32)
+  test_result : TEXT
+  report_generated : TINYINT
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+' 外键关联（同一对表只画一条线时，多重引用在注释中说明）
+T_USER ||--o{ T_CONV : "1 : N\npatient_id / participant1_user_id /\nparticipant2_user_id → id"
+T_CONV ||--o{ T_MSG : "1 : N\nconversation_id → conversation.id"
+T_USER ||--o{ T_MSG : "N : 1\nsender_id → tcm_user.id\n(系统消息等可空或非用户)"
+T_USER ||--o| T_PROFILE : "1 : 0..1\nuser_id → tcm_user.id"
+T_USER ||--o{ T_TEST : "1 : N\nuser_id → tcm_user.id"
+
+note as N1
+  **与论文章节表 4.1～4.5 的对应关系**
+  • 会话：物理表 **conversation**（表 4.1、4.2 实为同一张表的字段分列说明）。
+  • 用户：**tcm_user**（表 4.3）。
+  • 健康档案：**user_health_profile**（表 4.4；字段命名以库表为准，如 current_constitution）。
+  • 体质测试：**user_constitution_test**（表 4.5；库中为 primary_constitution 等）。
+  • 消息明细：**conversation_message** 与会话同属「会话与消息」域，建议在本图一并标出。
+  • 若论文正文仍写 participant1_id，请在表结构处与物理列 **participant1_user_id** 做一次对照说明。
+end note
+
+N1 .. T_USER
+
+@enduml

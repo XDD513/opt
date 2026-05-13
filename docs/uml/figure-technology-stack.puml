@@ -1,0 +1,54 @@
+@startuml figure_technology_stack
+title 图 医院预约与体质辨识系统 — 技术栈图
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam componentStyle rectangle
+
+left to right direction
+
+package "前端技术栈" #E3F2FD {
+  component "Vue 3" as Vue <<核心框架>>
+  component "Element Plus" as EP <<UI 组件库>>
+  component "Axios" as Axios <<数据交互>>
+  component "Vite" as Vite <<构建与开发服务>>
+  Vue -[hidden]right- EP
+  EP -[hidden]right- Axios
+  Axios -[hidden]right- Vite
+}
+
+package "后端技术栈" #FFF3E0 {
+  component "Spring Boot 2.7" as SB <<核心框架>>
+  component "MyBatis-Plus" as MBP <<ORM 映射>>
+  component "Maven" as MVN <<依赖管理>>
+  component "Spring Security + JWT" as SEC <<安全与鉴权>>
+  SB -[hidden]right- MBP
+  MBP -[hidden]right- MVN
+  MVN -[hidden]right- SEC
+}
+
+package "智能与扩展" #E8F5E9 {
+  component "Flask + ONNX" as Flask <<舌象推理>>
+  component "DeepSeek API" as LLM <<大模型解读>>
+  Flask -[hidden]right- LLM
+}
+
+package "数据库与中间件" #FCE4EC {
+  database "MySQL 8.0" as MySQL <<关系型数据库>>
+  component "Redis" as Redis <<缓存 / 会话>>
+  component "RabbitMQ" as MQ <<异步消息>>
+  component "Nacos" as Nacos <<配置中心>>
+  MySQL -[hidden]right- Redis
+  Redis -[hidden]right- MQ
+  MQ -[hidden]right- Nacos
+}
+
+Axios ..> SB : REST /\nWebSocket
+MBP ..> MySQL : 持久化
+SB ..> Redis
+SB ..> MQ
+SB ..> Nacos
+SB ..> Flask : HTTP
+SB ..> LLM : HTTPS
+
+@enduml

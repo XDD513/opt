@@ -1,0 +1,63 @@
+@startuml figure_4_5_1_backend_mvc
+title 图 4.5-1 基于 Spring Boot 的分层架构与 MVC 角色映射\n（hospital-appointment-system）
+
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam ArrowColor #37474F
+skinparam ranksep 28
+skinparam nodesep 20
+
+top to bottom direction
+
+package "MVC · View（视图）\n由前端独立实现" #E8F5E9 {
+  artifact "Vue 3 单页应用\n浏览器渲染 UI" as VIEW
+}
+
+package "MVC · Controller（控制器）\ncom.hospital.controller" #E3F2FD {
+  component "RestController\n接收 HTTP、参数校验、调用业务\n统一 Result JSON 响应" as CTRL
+}
+
+package "业务层（领域逻辑 / 事务编排）\ncom.hospital.service" #FFF8E1 {
+  component "Service 接口与 Impl\n业务规则、调用外部服务\n(AI、MQ、缓存等)" as SVC
+}
+
+package "MVC · Model（模型 — 持久化与领域对象）" #F3E5F5 {
+  together {
+    component "Entity / DTO\n领域对象与传输对象" as MODEL
+    component "Mapper\nMyBatis-Plus + XML" as MAPPER
+  }
+  MODEL -[hidden]right- MAPPER
+}
+
+database "MySQL\n关系型数据存储" as DB #E3F2FD
+
+VIEW -down-> CTRL : HTTPS\n请求 / 响应 JSON
+CTRL -down-> SVC : 调用
+SVC -down-> MODEL : 读写领域对象
+SVC -down-> MAPPER : 持久化操作
+MAPPER -down-> DB : JDBC
+
+note right of VIEW
+  **MVC 说明**：视图完全在客户端；
+  服务端不返回 HTML 视图，仅返回数据。
+end note
+
+note right of CTRL
+  **MVC 说明**：控制器只做「接请求、转调、返回」，
+  不写复杂业务规则。
+end note
+
+note right of SVC
+  **分层说明**：Service 承担主要业务逻辑；
+  教材中若将「模型」广义理解为业务+数据，
+  可将本层与右侧 Model 包一并归入「模型层」表述。
+end note
+
+note bottom of DB
+  **与教材表述对齐**：经典 MVC 的 **Model** 常包含「数据 + 规则」；
+  在本项目中 **规则** 主要在 **Service**，**结构化数据与表映射** 在 **Entity + Mapper**，
+  **View** 在前端 **Vue**，**Controller** 为 Spring **RestController**。
+end note
+
+@enduml

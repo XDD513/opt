@@ -1,0 +1,63 @@
+@startuml figure_deployment
+title 图 医院预约与体质辨识系统 — 部署图
+
+skinparam shadowing false
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam node {
+  BackgroundColor #ECEFF1
+  BorderColor #37474F
+}
+
+left to right direction
+
+actor "用户" as User
+
+node "客户端设备\n«device»" as Device {
+  artifact "Web 浏览器" as Browser
+}
+
+cloud "公网 / 机构网络" as Net {
+  node "接入层\n«execution environment»" as Edge {
+    artifact "Nginx\n(HTTPS / 反向代理 / 静态资源)" as Nginx
+  }
+
+  node "应用服务器\n«execution environment»" as AppNode {
+    artifact "hospital-frontend\n(Vue 3 构建产物)" as FEBuild
+    artifact "hospital-appointment-system\n(Spring Boot / JVM)" as BootJar
+  }
+
+  node "AI 推理服务器\n«execution environment»" as AiNode {
+    artifact "ai-service\n(Flask + ONNX Runtime)" as FlaskApp
+  }
+
+  node "数据与中间件\n«device»" as DataNode {
+    database "MySQL 8.0" as MySQL
+    artifact "Redis" as Redis
+    artifact "RabbitMQ" as MQ
+    artifact "Nacos" as Nacos
+  }
+}
+
+cloud "外部云服务" as Ext {
+  artifact "DeepSeek API" as DeepSeek
+  artifact "对象存储 OSS\n(可选)" as OSS
+}
+
+User --> Browser : HTTPS
+Browser --> Nginx : 443
+Nginx --> FEBuild : 静态站点
+Nginx --> BootJar : /api 等\n反向代理
+Browser ..> BootJar : WebSocket\n(可经 Nginx)
+
+BootJar --> MySQL : JDBC
+BootJar --> Redis : 缓存 / 锁
+BootJar --> MQ : AMQP
+BootJar --> Nacos : 配置拉取
+BootJar --> FlaskApp : HTTP\n舌象检测
+BootJar --> DeepSeek : HTTPS
+BootJar ..> OSS : SDK\n(若启用)
+
+FlaskApp ..> DeepSeek : 可选\n编排调用
+FlaskApp ..> MySQL : 可选\n日志 / 任务
+
+@enduml

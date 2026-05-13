@@ -56,6 +56,25 @@ npm run acceptance
 
 若存在失败用例，退出码为 `1`。
 
+## 药膳推荐离线评测（论文图 6.7～6.9）
+
+对个性化推荐与「热门」「随机」基线对比 **Precision@K、NDCG@K、Hit Rate**（体质字段匹配规则与后端一致），并导出 SVG。
+
+```powershell
+cd D:\Desktop\hospital\acceptance-tests
+# 本地后端
+npm run rec-eval
+# 远程服务器（HTTP， nginx 反代根路径，无需写端口）
+$env:BASE_URL="http://YOUR_SERVER_IP"; npm run rec-eval
+```
+
+- **账号来源**：优先读取 `batch-fullflow/output/batch-fullflow-result.json` 中成功用户（默认密码 `EVAL_PASSWORD=123456`，上限 `EVAL_MAX_USERS`）；若无则使用 `.env` 中 `TEST_USERNAME`（仅 N=1，说服力弱）。
+- **登录与验证码**：`/api/user/login` 需要验证码。脚本已集成 **tesseract.js** 自动识别验证码（依赖 `npm install`）；若多次失败，可在浏览器登录后在开发者工具复制 JWT，设置 **`REC_EVAL_TOKEN`**（或 **`TEST_TOKEN`**）后重跑——**仅在使用单个评测账号时生效**；批量账号将对每个用户依次 OCR 登录。
+- **前置条件**：服务可访问（默认 `BASE_URL=http://localhost:8000`）；样本须已完成体质测试。
+- **无后端占位出图**（不可写入论文为真实结论）：`npm run rec-eval:demo`
+
+输出目录：`reports/rec-eval/`（`rec-eval-summary.md`、`rec-eval-summary.json`、`fig67-precision-ndcg.svg`、`fig68-precision-by-constitution.svg`、`fig69-radar.svg`）。
+
 ## 论文表述示例
 
 「验收阶段采用自动化脚本对系统 REST 接口进行分层验证：在功能层面覆盖用户、体质辨识、药膳推荐、健康档案、内容社区、医患沟通与辅助模块；在安全层面验证未授权访问拦截；在规则层面校验关键业务前置条件；并对核心接口进行多次抽样以统计响应时间分布。测试结果以表格与图表形式归档（见附录）。」

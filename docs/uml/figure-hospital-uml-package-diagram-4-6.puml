@@ -1,0 +1,136 @@
+@startuml figure_hospital_uml_package_diagram_4_6
+title 图 医院中医体质辨识与健康管理系统 UML 包图\n（与 4.6 逻辑构件对应 · 模板：<<use>> / <<import>> / 泛化）
+
+skinparam defaultFontName "Microsoft YaHei UI"
+skinparam shadowing false
+skinparam packageStyle folder
+skinparam package {
+  BackgroundColor #FFFDE7
+  BorderColor #F9A825
+  FontColor #000000
+}
+skinparam ArrowColor #000000
+skinparam class {
+  BackgroundColor #FFFDE7
+  BorderColor #F9A825
+}
+skinparam nodesep 22
+skinparam ranksep 26
+
+' ========== 前端基础包（类比 GUI）==========
+package "frontend 前端基础构件" as PKG_FE #FFECB3 {
+  abstract class "<<抽象壳层>>\nFrontendShell" as CLS_FE_SHELL
+  class "+Layout" as CLS_FE_LAYOUT
+  class "+CommonComponents" as CLS_FE_COMP
+  class "#ComposableHooks" as CLS_FE_HOOK
+}
+
+' ========== 患者端 / 管理端（类比 WebGUI / WindowsGUI 特化 GUI）==========
+package "patient-web 患者端前端" as PKG_PAT #FFF9C4 {
+  class "+PatientRouter" as CLS_PAT_R
+  class "+PatientViews" as CLS_PAT_V
+  class "PatientApp" as CLS_PAT_APP
+}
+
+package "admin-web 管理端前端" as PKG_ADM #FFF9C4 {
+  class "+AdminRouter" as CLS_ADM_R
+  class "+AdminViews" as CLS_ADM_V
+  class "AdminApp" as CLS_ADM_APP
+}
+
+CLS_PAT_APP -up-|> CLS_FE_SHELL
+CLS_ADM_APP -up-|> CLS_FE_SHELL
+
+CLS_PAT_R -[hidden]down- CLS_PAT_V
+CLS_ADM_R -[hidden]down- CLS_ADM_V
+
+' ========== 跨端通用（类比 Rule，被前端 import）==========
+package "shared 跨端通用构件" as PKG_SHARED #FFF9C4 {
+  class "+TongueDataParser" as CLS_SH_PARSE
+  class "+ValidateRules" as CLS_SH_VAL
+  class "-FormatProfiles" as CLS_SH_FMT
+}
+
+PKG_PAT ..> PKG_SHARED : <<import>>
+PKG_ADM ..> PKG_SHARED : <<import>>
+
+' ========== common / framework ==========
+package "common 通用构件" as PKG_COMMON #FFF9C4 {
+  class "+ApiResult" as CLS_CM_RES
+  class "+SystemConstants" as CLS_CM_CST
+  class "-StringUtils" as CLS_CM_UTL
+}
+
+package "framework 框架构件" as PKG_FW #FFF9C4 {
+  class "+SecurityConfig" as CLS_FW_SEC
+  class "+JwtAuthenticationFilter" as CLS_FW_JWT
+  class "+GlobalExceptionHandler" as CLS_FW_EX
+}
+
+PKG_FW ..> PKG_COMMON : <<import>>
+PKG_SHARED ..> PKG_COMMON : <<import>>
+
+' ========== system / business / mapper / persistence（类比 Server → Package）==========
+package "system 系统模块构件" as PKG_SYS #FFF9C4 {
+  class "+UserService" as CLS_SYS_U
+  class "+RoleMenuService" as CLS_SYS_RM
+}
+
+package "business 业务模块构件" as PKG_BIZ #FFF9C4 {
+  class "+ConstitutionTestService" as CLS_BZ_CT
+  class "+HealthArticleService" as CLS_BZ_AR
+  class "+HealthProfileService" as CLS_BZ_HP
+}
+
+package "mapper 数据访问构件" as PKG_MAP #FFF9C4 {
+  class "+UserMapper" as CLS_MP_U
+  class "+HealthArticleMapper" as CLS_MP_A
+}
+
+package "persistence 持久化与数据库" as PKG_DB #FFF9C4 {
+  class "+DataSource" as CLS_DB_DS
+  class "+MyBatisSqlSession" as CLS_DB_SS
+}
+
+PKG_SYS ..> PKG_COMMON : <<import>>
+PKG_BIZ ..> PKG_COMMON : <<import>>
+PKG_MAP ..> PKG_COMMON : <<import>>
+
+PKG_SYS ..> PKG_MAP : <<use>>
+PKG_BIZ ..> PKG_MAP : <<use>>
+PKG_MAP ..> PKG_DB : <<use>>
+
+' ========== api（类比 Server，被 Client <<use>>）==========
+package "api 接口构件" as PKG_API #FFF9C4 {
+  class "+RestControllers" as CLS_API_CTRL
+}
+
+PKG_API ..> PKG_SYS : <<use>>
+PKG_API ..> PKG_BIZ : <<use>>
+PKG_API ..> PKG_FW : <<use>>
+PKG_API ..> PKG_COMMON : <<import>>
+
+PKG_BIZ ..> PKG_SHARED : <<import>>
+
+PKG_PAT ..> PKG_API : <<use>>
+PKG_ADM ..> PKG_API : <<use>>
+
+' ========== admin 启动 ==========
+package "admin 启动构件" as PKG_BOOT #FFECB3 {
+  class "+HospitalApplication" as CLS_BT_APP
+  class "+application.yml" as CLS_BT_YML
+}
+
+PKG_BOOT ..> PKG_API : <<use>>
+PKG_BOOT ..> PKG_FW : <<use>>
+PKG_BOOT ..> PKG_COMMON : <<import>>
+
+legend right
+  **图例（与教材 UML 包图模板一致）**
+  * **+ / - / #** 表示 **public / private / protected**（示意列举）。
+  * **虚线箭头 `..>`** 为 **依赖**；**<<use>>** 使用依赖，**<<import>>** 导入依赖。
+  * **实线空心三角 `-|>`** 为 **泛化**：`PatientApp`、`AdminApp` **特化** 包 `frontend` 中的 `FrontendShell`（与「WebGUI / WindowsGUI → GUI」同构）。
+  * 包名与论文 **4.6.1～4.6.3** 中后端构件、前端双端及跨端通用构件对应。
+endlegend
+
+@enduml

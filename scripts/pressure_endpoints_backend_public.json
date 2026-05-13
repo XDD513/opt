@@ -1,0 +1,5 @@
+[
+  { "method": "GET", "path": "/api/captcha/image", "name": "captcha_image" },
+  { "method": "GET", "path": "/api/config", "name": "frontend_runtime_config" }
+]
+
