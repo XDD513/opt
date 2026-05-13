@@ -12,7 +12,7 @@
       <el-col :xs="24" :sm="12" :md="8" v-for="recipe in recipes" :key="recipe.id">
         <el-card class="recipe-card" shadow="hover" @click="goToRecipeDetail(recipe.id)">
           <div class="recipe-image">
-            <el-image :src="getRecipeImage(recipe.image)" fit="cover" :lazy="true">
+            <el-image :src="resolveRecipeCoverUrl(recipe.image, recipe.id, recipe.name || recipe.recipeName)" fit="cover" :lazy="true">
               <template #error>
                 <div class="image-slot">
                   <el-icon><Picture /></el-icon>
@@ -45,6 +45,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { ArrowRight, Picture, InfoFilled } from '@element-plus/icons-vue'
+import { resolveRecipeCoverUrl } from '@/utils/mediaUrl'
 
 const props = defineProps({
   recipes: {
@@ -79,17 +80,6 @@ const constitutionNames = {
   'XUEYU': '血瘀质',
   'QIYU': '气郁质',
   'TEBING': '特禀质'
-}
-
-// 获取药膳图片URL
-const getRecipeImage = (imagePath) => {
-  if (!imagePath) {
-    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2Y1ZjVmNSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE4IiBmaWxsPSIjY2NjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+6I2v6IaA5Zu+54mHPC90ZXh0Pjwvc3ZnPg=='
-  }
-  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    return imagePath
-  }
-  return `/uploads/${imagePath}`
 }
 
 // 获取季节名称

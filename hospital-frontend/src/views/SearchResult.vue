@@ -30,7 +30,7 @@
             <el-col v-for="recipe in recipeResults" :key="recipe.id" :xs="24" :sm="12" :md="8" :lg="6">
               <el-card class="result-card" @click="goToRecipeDetail(recipe.id)" shadow="hover">
                 <div class="card-content">
-                  <el-image :src="recipe.imageUrl" class="card-image" fit="cover" :lazy="true">
+                  <el-image :src="resolveRecipeCoverUrl(recipe.imageUrl || recipe.image, recipe.id, recipe.recipeName)" class="card-image" fit="cover" :lazy="true">
                     <template #error>
                       <div class="image-slot">
                         <el-icon><Picture /></el-icon>
@@ -149,6 +149,7 @@ import SearchBox from '@/components/SearchBox.vue'
 import { searchRecipes } from '@/api/recipe'
 import { getArticleList } from '@/api/article'
 import { searchAcupoints } from '@/api/acupoint'
+import { resolveRecipeCoverUrl } from '@/utils/mediaUrl'
 import dayjs from 'dayjs'
 
 const route = useRoute()

@@ -22,7 +22,7 @@
             >
               <div class="recipe-image">
                 <el-image
-                  :src="getRecipeImage(getRecipeData(item).image || getRecipeData(item).imageUrl)"
+                  :src="resolveRecipeCoverUrl(getRecipeData(item).image || getRecipeData(item).imageUrl, getRecipeData(item).id || item.recipeId || item.targetId, getRecipeData(item).recipeName)"
                   :alt="getRecipeData(item).recipeName"
                   fit="cover"
                   :lazy="true"
@@ -103,6 +103,7 @@ import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { Document, User, Clock, Picture } from '@element-plus/icons-vue'
 import { getFavoriteRecipes, unfavoriteRecipe } from '@/api/recipe'
+import { resolveRecipeCoverUrl } from '@/utils/mediaUrl'
 
 const router = useRouter()
 
@@ -205,22 +206,6 @@ const removeFavorite = async (item) => {
 // 1) 旧结构：{ recipe: {...} }
 // 2) 新结构：直接返回 HerbalRecipe 扁平对象
 const getRecipeData = (item) => item?.recipe || item || {}
-
-// 获取药膳图片URL
-const getRecipeImage = (imagePath) => {
-  // 如果没有图片路径，返回占位图（使用data URL避免404请求）
-  if (!imagePath) {
-    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2Y1ZjVmNSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE4IiBmaWxsPSIjY2NjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+6I2v6IaA5Zu+54mHPC90ZXh0Pjwvc3ZnPg=='
-  }
-
-  // 如果是完整URL，直接返回
-  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    return imagePath
-  }
-
-  // 如果是相对路径，从public/uploads目录加载
-  return `/uploads/${imagePath}`
-}
 
 // 返回
 const goBack = () => {

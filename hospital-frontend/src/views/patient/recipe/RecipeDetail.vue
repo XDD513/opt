@@ -13,7 +13,7 @@
           <el-col :span="10">
             <div class="recipe-image">
               <el-image
-                :src="getRecipeImage(recipe.image || recipe.imageUrl)"
+                :src="resolveRecipeCoverUrl(recipe.image || recipe.imageUrl, recipe.id, recipe.recipeName)"
                 :alt="recipe.recipeName"
                 fit="cover"
                 :lazy="true"
@@ -240,6 +240,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import { Star, Picture, InfoFilled } from '@element-plus/icons-vue'
 import { getRecipeDetail, favoriteRecipe, unfavoriteRecipe } from '@/api/recipe'
+import { resolveRecipeCoverUrl } from '@/utils/mediaUrl'
 
 const route = useRoute()
 const router = useRouter()
@@ -382,22 +383,6 @@ const toggleFavorite = async () => {
 
     message.error(error.response?.data?.message || '操作失败')
   }
-}
-
-// 获取药膳图片URL
-const getRecipeImage = (imagePath) => {
-  // 如果没有图片路径，返回占位图（使用data URL避免404请求）
-  if (!imagePath) {
-    return 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMjAwIiBoZWlnaHQ9IjE1MCIgZmlsbD0iI2Y1ZjVmNSIvPjx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBmb250LXNpemU9IjE4IiBmaWxsPSIjY2NjIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+6I2v6IaA5Zu+54mHPC90ZXh0Pjwvc3ZnPg=='
-  }
-
-  // 如果是完整URL，直接返回
-  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
-    return imagePath
-  }
-
-  // 如果是相对路径，从public/uploads目录加载
-  return `/uploads/${imagePath}`
 }
 
 // 返回
